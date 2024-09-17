@@ -23,19 +23,21 @@ void send_ADS4222(uint16_t addr, uint16_t data) {
     HAL_GPIO_WritePin(ADC_SEN_PORT, ADC_SEN_PIN, GPIO_PIN_RESET);
 
     // Tsloads delay
-    delay_us(5);
+    delay_us(ADC_SPI_DELAY);
 
     // Send data via SPI
     HAL_SPI_Transmit(&ADC_SPI, reinterpret_cast<uint8_t*>(&spi_data), ADC_SPI_DATA_SIZE, ADC_SPI_TIMEOUT);
 
     // Tsloadh delay
-    delay_us(5);
+    delay_us(ADC_SPI_DELAY);
 
     // Tie SEN high to end the communication
     HAL_GPIO_WritePin(ADC_SEN_PORT, ADC_SEN_PIN, GPIO_PIN_SET);
+    // Tie SCK high to make sure it isn't left floating in an unknown state
+    //HAL_GPIO_WritePin(ADC_SCK_PORT, ADC_SCK_PIN, GPIO_PIN_SET);
 
     // Short additional delay to make consecutive writes more readable
-    delay_us(5);
+    delay_us(ADC_SPI_DELAY*2);
 }
 
 /**
@@ -44,6 +46,11 @@ void send_ADS4222(uint16_t addr, uint16_t data) {
  * @return 16-bit packet containing the padding and 8-bit data
  */
 uint16_t read_ADS4222(uint16_t addr) {
+    // do not allow reading from the 00 register (it messes up the readout register)
+    if (addr == ADS4222_REG00) {
+        return 0;
+    }
+
     // readout register to 1
     send_ADS4222(ADS4222_REG00, REG00_READOUT_MASK);
 
@@ -60,19 +67,21 @@ uint16_t read_ADS4222(uint16_t addr) {
     HAL_GPIO_WritePin(ADC_SEN_PORT, ADC_SEN_PIN, GPIO_PIN_RESET);
 
     // Tsloads delay
-    delay_us(5);
+    delay_us(ADC_SPI_DELAY);
 
     // Send the read command via SPI and receive the data
     HAL_SPI_TransmitReceive(&ADC_SPI, reinterpret_cast<uint8_t*>(&spi_command), reinterpret_cast<uint8_t*>(&spi_received_data), ADC_SPI_DATA_SIZE, ADC_SPI_TIMEOUT);
 
     // Tsloadh delay
-    delay_us(5);
+    delay_us(ADC_SPI_DELAY);
 
     // Tie SEN high to end the communication
     HAL_GPIO_WritePin(ADC_SEN_PORT, ADC_SEN_PIN, GPIO_PIN_SET);
+    // Tie SCK high to make sure it isn't left floating in an unknown state
+    //HAL_GPIO_WritePin(ADC_SCK_PORT, ADC_SCK_PIN, GPIO_PIN_SET);
 
     // Short delay before the next operation
-    delay_us(5);
+    delay_us(ADC_SPI_DELAY*2);
 
     // readout register to 0
     send_ADS4222(ADS4222_REG00, 0);

@@ -66,14 +66,14 @@ void vna_init() {
     // Initialize the ADC
     init_ADS4222();
 
-    while (true) {
-        state = read_ADS4222(ADS4222_REG00);
+    // to read ADS4222 registers and make sure the ADC is working
+    /*while (true) {
         state = read_ADS4222(ADS4222_REG03);
         state = read_ADS4222(ADS4222_REG29);
         state = read_ADS4222(ADS4222_REG3D);
         state = read_ADS4222(ADS4222_REG41);
         tx_thread_sleep(10); // Wait for the PLL to lock
-    }
+    }*/
 
     tx_thread_sleep(100);
 

@@ -19,15 +19,18 @@
 #define ADC_SEN_PIN     SPI3_CS_Pin
 #define ADC_RST_PORT    SPI3_RST_GPIO_Port
 #define ADC_RST_PIN     SPI3_RST_Pin
+#define ADC_SCK_PORT    SPI3_SCK_GPIO_Port
+#define ADC_SCK_PIN     SPI3_SCK_Pin
 
+#define ADC_SPI_DELAY       10  // in us, should be enough
 #define ADC_SPI_DATA_SIZE   1   // 1x16-bit SPI data size
-#define ADC_SPI_TIMEOUT     2   // in ms, should be enough
+#define ADC_SPI_TIMEOUT     5   // in ms, should be enough
 
 // Register component shifts and masks
-#define ADS4222_ADDR_MASK         0x0F                                            // Address bits before shifting (bits 7 to 0)
+#define ADS4222_ADDR_MASK         0xFF                                            // Address bits before shifting (bits 7 to 0)
 #define ADS4222_ADDR_SHIFT        8                                               // Shift for address bits
 #define ADS4222_ADDR_MASK_SH      (STUW81300_ADDR_MASK << STUW81300_ADDR_SHIFT)   // Address bits (bits 15 to 8)
-#define ADS4222_DATA_MASK         0x0F                                            // Data bits (bits 7 to 0)
+#define ADS4222_DATA_MASK         0xFF                                            // Data bits (bits 7 to 0)
 
 // Register addresses
 #define ADS4222_REG00        0x00      // RESET and READOUT
@@ -153,8 +156,8 @@
 // Register 41 options (LVDS CMOS, CMOS CLKOUT STRENGTH, DIS OBUF)
 #define REG41_LVDS_CMOS_OFFSET              6                                       // B:[7:6] LVDS CMOS output mode
 #define REG41_LVDS_CMOS_MASK                (0b11 << REG41_LVDS_CMOS_OFFSET)        // B:[7:6] LVDS CMOS output mode
-#define REG41_LVDS_CMOS_LVDS_MASK           0b00                                    // B:[7:6] DDR LVDS output mode
-#define REG41_LVDS_CMOS_CMOS_MASK           0b11                                    // B:[7:6] CMOS output mode
+#define REG41_LVDS_CMOS_LVDS_MASK           (0b00 << REG41_LVDS_CMOS_OFFSET)        // B:[7:6] DDR LVDS output mode
+#define REG41_LVDS_CMOS_CMOS_MASK           (0b11 << REG41_LVDS_CMOS_OFFSET)        // B:[7:6] CMOS output mode
 #define REG41_CMOS_CLKOUT_STRE_OFFSET       4                                       // B:[5:4] CMOS CLKOUT strength
 #define REG41_CMOS_CLKOUT_STRENGTH_MASK     (0b11 << REG41_CMOS_CLKOUT_STRE_OFFSET) // B:[5:4] CMOS CLKOUT strength
 #define REG41_CMOS_CLKOUT_STRENGTH_MAX_MASK 0b00                                    // B:[5:4] Maximum drive strength
