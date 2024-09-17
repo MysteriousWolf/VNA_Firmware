@@ -1,0 +1,2 @@
+# Open Source VNA Firmware
+This is the firmware for the Open Source VNA project. The firmware is written in C and is designed to run on the STM32H563VITx microcontroller. The firmware is designed to be used with the Open Source VNA hardware project and the FPGA based phase detector project.
