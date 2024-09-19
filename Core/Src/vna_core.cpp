@@ -25,6 +25,7 @@ void vna_init() {
     // Start the timers
     init_utils();
 
+
     /* Initialize the VCO */
     // Set BUSY animation to LED 1 to indicate that the VCO is starting up
     set_led_state(0, LED_BUSY);
@@ -37,20 +38,8 @@ void vna_init() {
 
     // Wait for the PLL to lock
     tx_thread_sleep(100);
+    // TODO uncomment when testing the entire setup!
     /*while (!check_lock_STUW81300()) {
-        state = read_STUW81300(STUW81300_REG0);
-        state = read_STUW81300(STUW81300_REG1);
-        state = read_STUW81300(STUW81300_REG2);
-        state = read_STUW81300(STUW81300_REG3);
-        state = read_STUW81300(STUW81300_REG4);
-        state = read_STUW81300(STUW81300_REG5);
-        state = read_STUW81300(STUW81300_REG6);
-        state = read_STUW81300(STUW81300_REG7);
-        state = read_STUW81300(STUW81300_REG8);
-        state = read_STUW81300(STUW81300_REG9);
-        state = read_STUW81300(STUW81300_REG10);
-        state = read_STUW81300(STUW81300_REG11);
-        //send_STUW81300(STUW81300_REG11, 123456789);
         tx_thread_sleep(10); // Wait for the PLL to lock
     }*/
 

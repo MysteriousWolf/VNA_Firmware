@@ -25,8 +25,6 @@
 #define PLL_SPI         hspi2
 #define PLL_LE_PORT     SPI2_RST_GPIO_Port
 #define PLL_LE_PIN      SPI2_RST_Pin
-#define PLL_CLK_PORT    SPI2_SCK_GPIO_Port
-#define PLL_CLK_PIN     SPI2_SCK_Pin
 
 #define PLL_SPI_DATA_SIZE   1 // in chunks defined in the HAL SPI library
 #define PLL_SPI_DELAY       50 // in us, should be enough

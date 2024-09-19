@@ -36,9 +36,6 @@ void send_STUW81300(uint32_t addr, uint32_t data) {
         delay_us(PLL_SPI_DELAY);
     }
 
-    // Pull CLK pin high to speed up the pullup process
-    HAL_GPIO_WritePin(PLL_CLK_PORT, PLL_CLK_PIN, GPIO_PIN_SET);
-
     // Tcl delay
     delay_us(PLL_SPI_DELAY);
 
@@ -75,9 +72,6 @@ uint32_t read_STUW81300(uint32_t addr) {
     HAL_SPI_TransmitReceive(&PLL_SPI, reinterpret_cast<uint8_t*>(&spi_command),
                             reinterpret_cast<uint8_t*>(&spi_received_data), PLL_SPI_DATA_SIZE, PLL_SPI_TIMEOUT);
 
-    // Pull CLK pin high to speed up the pullup process
-    HAL_GPIO_WritePin(PLL_CLK_PORT, PLL_CLK_PIN, GPIO_PIN_SET);
-
     // Tcl delay
     delay_us(PLL_SPI_DELAY);
 
@@ -103,10 +97,10 @@ constexpr uint32_t ST8_INIT =
     (CORE_VCC_HIGH_MASK & REG8_REG_VCO_4V5_VOUT_4_5V_MASK);
 // Set the LD_SDO bit to 0 for CMOS output mode (may need REG7_LD_SDO_MODE_MASK if we decide to actually use the pin)
 // Cycle slip compensation may be needed for faster frequency switching
-constexpr uint32_t ST7_INIT = 0 | REG7_LD_SDO_tristate_MASK /*| REG7_LD_SDO_MODE_MASK*/;
+constexpr uint32_t ST7_INIT = REG7_LD_SDO_MODE_MASK | ((0b10 << REG7_FSTLCK_CNT_OFFSET) & REG7_FSTLCK_CNT_MASK);
 // Enable temperature compensation (this one may need to be off for faster frequency switching - TBD)
 // EN_AUTOCAL may be needed for better frequency accuracy
-constexpr uint32_t ST6_INIT = REG6_CAL_TEMP_COMP_MASK;
+constexpr uint32_t ST6_INIT = 0 | REG6_CAL_TEMP_COMP_MASK | REG6_DITHERING_MASK;
 // Set the RF2 bit to low power (for now, may need to be full power if needed for the SHF mixer)
 constexpr uint32_t ST5_INIT = REG5_RF2_OUTBUF_LP_MASK;
 // maybe enable mute on unlock?
@@ -115,11 +109,12 @@ constexpr uint32_t ST4_INIT =
     (CORE_VCC_LOW_MASK & REG4_CALB_3V3_MODE1_MASK) |
     (CORE_VCC_LOW_MASK & REG4_RF_OUT_3V3_MASK) |
     (CORE_VCC_HIGH_MASK & (0b111 << REG4_VCO_AMP_OFFSET) & REG4_VCO_AMP_MASK) |
-    (CORE_VCC_LOW_MASK & (0b010 << REG4_VCO_AMP_OFFSET) & REG4_VCO_AMP_MASK) |
-    (REG4_CALB_3V3_MODE0_MASK & CORE_VCC_LOW_MASK) |
+    (CORE_VCC_LOW_MASK & (0b000 << REG4_VCO_AMP_OFFSET) & REG4_VCO_AMP_MASK) |
+    (CORE_VCC_LOW_MASK & REG4_CALB_3V3_MODE0_MASK) |
+    (CORE_VCC_LOW_MASK & REG4_VCALB_MODE_MASK) |
     REG4_REF_BUFF_MODE_SINGLE_MASK |
     // 10 ns lock detect precision (default is 2 ns 000)
-    ((0b100 << REG4_LD_PREC_OFFSET) & REG4_LD_PREC_MASK) |
+    ((0b001 << REG4_LD_PREC_OFFSET) & REG4_LD_PREC_MASK) |
     // 1024 cycles lock detect count (for FPFD 50 MHz which is ~ 60MHz that we have);
     ((0b101 << REG4_LD_COUNT_OFFSET) & REG4_LD_COUNT_MASK);
 constexpr uint32_t ST3_INIT = (DBR_MASK & REG3_DBR_MASK);
@@ -132,6 +127,13 @@ constexpr uint32_t ST0_INIT = ((0b10011 << REG0_CP_SEL_OFFSET) & REG0_CP_SEL_MAS
  *  @param busy_wait True to wait for the PLL to lock before returning
  */
 void init_STUW81300(const bool busy_wait) {
+    // Pre-init
+    send_STUW81300(STUW81300_REG9, ST9_INIT);
+    send_STUW81300(STUW81300_REG0, ST0_INIT | ((83 << REG0_N_INT_OFFSET) & REG0_N_INT_MASK)); // CCA 10 GHz
+
+    // Wait a bit
+    delay_us(1000);
+
     // Initialize the STUW81300 PLL
     send_STUW81300(STUW81300_REG9, ST9_INIT);
     send_STUW81300(STUW81300_REG8, ST8_INIT);
@@ -140,7 +142,8 @@ void init_STUW81300(const bool busy_wait) {
     send_STUW81300(STUW81300_REG5, ST5_INIT);
 
     // Set the top 5 registers accordingly - this also finishes the initialization
-    set_frequency_STUW81300(8000000000); // Set the frequency to 8 GHz and mute (min needed frequency)
+    // Set the frequency to 10 GHz and mute
+    update_STUW81300(10000000000, true);
 
     // Wait for the frequency to stabilize
     while (busy_wait && !check_lock_STUW81300()) {
@@ -224,11 +227,6 @@ uint64_t update_STUW81300(const uint64_t frequency, const bool mute) {
     // If values are out of range (frequency is 0), fail the operation
     if (actual_frequency == 0)
         return 0;
-
-    //TODO remove
-    //MOD = REG2_MOD_MIN;
-    //N_INT = REG0_N_INT_MIN;
-    //N_FRAC = REG1_N_FRAC_MIN;
 
     // Actually set the registers
     send_STUW81300(STUW81300_REG4, ST4_INIT | REG4_VCALB_MODE);
