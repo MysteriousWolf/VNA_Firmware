@@ -36,12 +36,33 @@ void vna_init() {
     // Initialize the VCO
     init_STUW81300(false);
 
-    // Wait for the PLL to lock
+#ifdef TEST_MODE
+    // Wait a bit
     tx_thread_sleep(100);
+    // Read STUW81300 registers and make sure the VCO is working
+    for (int i = 0; i < 20; i++) {
+        state = read_STUW81300(STUW81300_REG0);
+        state = read_STUW81300(STUW81300_REG1);
+        state = read_STUW81300(STUW81300_REG2);
+        state = read_STUW81300(STUW81300_REG3);
+        state = read_STUW81300(STUW81300_REG4);
+        state = read_STUW81300(STUW81300_REG5);
+        state = read_STUW81300(STUW81300_REG6);
+        state = read_STUW81300(STUW81300_REG7);
+        state = read_STUW81300(STUW81300_REG8);
+        state = read_STUW81300(STUW81300_REG9);
+        state = read_STUW81300(STUW81300_REG10);
+        state = read_STUW81300(STUW81300_REG11);
+    }
+#endif
+
+#ifndef TEST_MODE
     // TODO uncomment when testing the entire setup!
+    // Wait for the PLL to lock
     /*while (!check_lock_STUW81300()) {
         tx_thread_sleep(10); // Wait for the PLL to lock
     }*/
+#endif
 
     // Turn off the busy LED 1 to indicate that the VCO is ready
     set_led_state(0, LED_OFF);
@@ -55,16 +76,19 @@ void vna_init() {
     // Initialize the ADC
     init_ADS4222();
 
-    // to read ADS4222 registers and make sure the ADC is working
-    /*while (true) {
+#ifdef TEST_MODE
+    // Wait a bit
+    tx_thread_sleep(100);
+
+    // Read ADS4222 registers and make sure the ADC is working
+    for (int i = 0; i < 20; i++) {
         state = read_ADS4222(ADS4222_REG03);
         state = read_ADS4222(ADS4222_REG29);
         state = read_ADS4222(ADS4222_REG3D);
         state = read_ADS4222(ADS4222_REG41);
         tx_thread_sleep(10); // Wait for the PLL to lock
-    }*/
-
-    tx_thread_sleep(100);
+    }
+#endif
 
     // Turn off the busy LED 2 to indicate that the ADC is ready
     set_led_state(1, LED_OFF);
@@ -78,7 +102,10 @@ void vna_init() {
     // Initialize the FPGA
     //init_ICE40UP5K_PD();
 
+#ifdef TEST_MODE
+    // Wait a bit
     tx_thread_sleep(100);
+#endif
 
     // Turn off the busy LED 3 to indicate that the ADC is ready
     set_led_state(2, LED_OFF);
