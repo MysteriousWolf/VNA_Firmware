@@ -66,6 +66,21 @@ int32_t vna_set_meas_frequency_range(const uint64_t start_freq, const uint64_t s
 }
 
 /**
+ * Set the number of points of the active measurement data set
+ *
+ * @param meta Pointer to the measurement metadata
+ * @param count Number of points
+ * @return 0 on success, -1 if no active measurement data set is set
+ */
+int32_t vna_set_meas_point_count(meas_meta_t *meta, const uint32_t count) {
+    // Check if there are any active calibration data sets
+    if (active_meas < 0)
+        return -3; // No active calibration data set
+
+    return vna_set_point_count(meta, MEAS_MAX_POINTS, count);
+}
+
+/**
  * Get the active measurement data set
  *
  * @return Index of the active measurement data set

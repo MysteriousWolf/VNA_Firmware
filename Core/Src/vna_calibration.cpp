@@ -63,6 +63,20 @@ int32_t vna_set_calib_frequency_range(uint64_t start_freq, uint64_t stop_freq) {
 }
 
 /**
+ * Set the number of calibration points for the active calibration data set
+ * @param meta Pointer to the calibration metadata structure
+ * @param count Number of calibration points
+ * @return 0 if successful, negative error code otherwise
+ */
+int32_t vna_set_calib_point_count(meas_meta_t *meta, const uint32_t count) {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return -3; // No active calibration data set
+
+    return vna_set_point_count(meta, CALIB_MAX_POINTS, count);
+}
+
+/**
  * Get the active calibration data set
  * @return Index of the active calibration data set
  */

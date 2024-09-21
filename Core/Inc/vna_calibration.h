@@ -29,6 +29,7 @@ int32_t vna_set_active_calib(uint32_t calib_idx);
 int32_t vna_set_calib_start_frequency(uint64_t freq);
 int32_t vna_set_calib_stop_frequency(uint64_t freq);
 int32_t vna_set_calib_frequency_range(uint64_t start_freq, uint64_t stop_freq);
+int32_t vna_set_calib_point_count(meas_meta_t *meta, uint32_t count);
 
 int32_t vna_get_active_calib();
 

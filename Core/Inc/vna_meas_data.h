@@ -33,6 +33,8 @@ int32_t vna_set_start_frequency(meas_meta_t *meta, uint64_t freq);
 int32_t vna_set_stop_frequency(meas_meta_t *meta, uint64_t freq);
 int32_t vna_set_frequency_range(meas_meta_t *meta, uint64_t start_freq, uint64_t stop_freq);
 
+int32_t vna_set_point_count(meas_meta_t *meta, uint32_t max_points, uint32_t count);
+
 #ifdef __cplusplus
 }
 #endif
