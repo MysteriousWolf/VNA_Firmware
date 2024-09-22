@@ -6,6 +6,7 @@
 #define SIGNALING_H
 
 #include "main.h"
+#include "vna_core.h"
 #include "app_threadx.h"
 
 #include "scpi/scpi.h"

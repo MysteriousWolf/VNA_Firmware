@@ -25,8 +25,6 @@
 /* USER CODE BEGIN Includes */
 #include "main.h"
 #include "vna_core.h"
-#include "vna_signaling.h"
-#include "vna_cmd_engine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define THRAD_STACK_SIZE 1024
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,13 +44,12 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-uint8_t thread_stack[THRAD_STACK_SIZE];
-TX_THREAD thread_ptr;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-VOID light_thread_entry (ULONG initial_input);
+
 /* USER CODE END PFP */
 
 /**
@@ -69,9 +66,7 @@ UINT App_ThreadX_Init(VOID *memory_ptr)
   /* USER CODE BEGIN App_ThreadX_Init */
   //tx_trace_enable(&tracex_buffer,TRACEX_BUFFER_SIZE,30);
 
-  vna_signaling_init();
   vna_init();
-  vna_init_cmd_engine();
 
   /* USER CODE END App_ThreadX_Init */
 

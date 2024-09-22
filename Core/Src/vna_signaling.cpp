@@ -16,17 +16,16 @@ led_states led_state[LED_COUNT] = {};
 GPIO_TypeDef* led_port[LED_COUNT] = {LED_1_GPIO_Port, LED_2_GPIO_Port, LED_3_GPIO_Port};
 constexpr uint16_t led_pin[LED_COUNT] = {LED_1_Pin, LED_2_Pin, LED_3_Pin};
 
-uint8_t led_thread_stack[THREAD_STACK_SIZE];
+uint8_t led_thread_stack[SIGNALING_THREAD_STACK_SIZE];
 TX_THREAD led_thread_ptr;
-uint8_t button_thread_stack[THREAD_STACK_SIZE];
+uint8_t button_thread_stack[SIGNALING_THREAD_STACK_SIZE];
 TX_THREAD button_thread_ptr;
 
 void vna_signaling_init() {
-    tx_thread_create(&led_thread_ptr, (char*)"LED Thread", led_thread_entry, 0, led_thread_stack, THREAD_STACK_SIZE, 14, 14, 1,
-                     TX_AUTO_START);
-    tx_thread_create(&button_thread_ptr, (char*)"Button Thread", button_thread_entry, 0, button_thread_stack, THREAD_STACK_SIZE, 15,
-                     15, 1,
-                     TX_AUTO_START);
+    tx_thread_create(&led_thread_ptr, (char*)"LED Thread", led_thread_entry, 0, led_thread_stack,
+        SIGNALING_THREAD_STACK_SIZE, 14, 14, 1, TX_AUTO_START);
+    tx_thread_create(&button_thread_ptr, (char*)"Button Thread", button_thread_entry, 0, button_thread_stack,
+        SIGNALING_THREAD_STACK_SIZE, 15, 15, 1, TX_AUTO_START);
 }
 
 [[noreturn]]

@@ -7,6 +7,8 @@
 
 #include "main.h"
 
+#include "vna_cmd_engine.h"
+
 #include "vna_signaling.h"
 #include "vna_calibration.h"
 #include "vna_measurement.h"
@@ -17,8 +19,9 @@
 
 //#define TEST_MODE
 
-// Main thread stack
+// Thread stack sizes
 #define MAIN_THREAD_STACK_SIZE 1024
+#define SIGNALING_THREAD_STACK_SIZE 1024
 
 // Message queues
 #define MAIN_QUEUE_STACK_SIZE  16
@@ -42,6 +45,8 @@ typedef enum vna_status {
     VNA_STATUS_ERROR,
     VNA_STATUS_UNINITIALIZED,
     VNA_STATUS_INIT,
+    VNA_STATUS_INIT_SIG,
+    VNA_STATUS_INIT_CMD,
     VNA_STATUS_INIT_VCO,
     VNA_STATUS_INIT_ADC,
     VNA_STATUS_INIT_DSP,

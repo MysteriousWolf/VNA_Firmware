@@ -17,6 +17,12 @@ TX_QUEUE main_queue;
 uint32_t state = 0;
 
 void vna_init() {
+    // Set status to initializing signaling
+    status = VNA_STATUS_INIT_SIG;
+
+    // Initialize the signaling (LEDs, buttons, etc.)
+    vna_signaling_init();
+
     // Set status to initializing
     status = VNA_STATUS_INIT;
 
@@ -28,7 +34,13 @@ void vna_init() {
 
     // Create the main thread
     tx_thread_create(&main_thread_ptr, (char*)"Main VNA Thread", vna_thread_entry, 0, main_thread_stack,
-                     THREAD_STACK_SIZE, 1, 1, 1, TX_AUTO_START);
+                     MAIN_THREAD_STACK_SIZE, 1, 1, 1, TX_AUTO_START);
+
+    // Set status to initializing command engine
+    status = VNA_STATUS_INIT_CMD;
+
+    // Initialize the command engine
+    vna_init_cmd_engine();
 }
 
 [[noreturn]] VOID vna_thread_entry(ULONG initial_input) {

@@ -47,7 +47,7 @@
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN PD */
-#define THREAD_STACK_SIZE 1024
+
 /* USER CODE END PD */
 
 /* Main thread defines -------------------------------------------------------*/
