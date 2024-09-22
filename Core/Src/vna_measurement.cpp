@@ -4,6 +4,8 @@
 
 #include "vna_measurement.h"
 
+meas_data_t meas_data[MEAS_STORAGE_CNT] = {};
+
 int32_t active_meas = 0;
 
 void vna_meas_init() {
