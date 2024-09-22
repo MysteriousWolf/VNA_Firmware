@@ -51,7 +51,7 @@ void send_DSP(uint32_t addr, uint32_t data);
 uint32_t read_DSP(uint32_t addr);
 
 int32_t dsp_set_rbw_filter_coefficient(int32_t coefficient, uint32_t coef_index);
-int32_t dsp_set_rbw_filter_coefficients(int32_t *coefficients, uint32_t num_coefficients);
+int32_t dsp_set_rbw_filter_coefficients(const int32_t *coefficients, uint32_t num_coefficients);
 
 int32_t dsp_get_rbw_filter_coefficient(int32_t *coefficient, uint32_t coef_index);
 
