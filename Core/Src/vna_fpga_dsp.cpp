@@ -128,5 +128,7 @@ int32_t dsp_start_measurement(const uint64_t freq) {
 }
 
 int32_t dsp_read_point(meas_point_t *point) {
+    // TODO implement the actual DSP point reading
 
+    return 0;
 }
