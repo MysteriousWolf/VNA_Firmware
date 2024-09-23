@@ -207,7 +207,6 @@ uint64_t update_STUW81300(const uint64_t frequency, const bool mute) {
     // Set the R_DIV value to 1 (fixed value) - gives internal 60 MHz reference (close to 50 MHz in the datasheet)
     constexpr uint32_t R_DIV = 1;
     // Fixed at max for max frequency precision
-    //uint32_t MOD = REG2_MOD_MAX; //TODO REMOVE
     constexpr uint32_t MOD = REG2_MOD_MAX;
     // "zero"-init Nint and Nfrac (this gives the minimum VCO frequency at the beginning)
     static uint32_t N_INT = REG0_N_INT_MIN;
