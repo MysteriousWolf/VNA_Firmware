@@ -1,14 +1,5 @@
 #include "vna_stuw81300.h"
 
-// SCPI frequency units with their multipliers
-scpi_choice_def_t scpi_choice_frequency_units[] = {
-    {"Hz", 1},
-    {"kHz", 1000},
-    {"MHz", 1000000},
-    {"GHz", 1000000000},
-    SCPI_CHOICE_LIST_END
-};
-
 /** @brief Send data to the STUW81300 PLL
  *  @param addr The address to write to
  *  @param data The data to write to the address
