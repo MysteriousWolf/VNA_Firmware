@@ -39,9 +39,6 @@ meas_meta_t *vna_get_active_meas_meta();
 
 int32_t vna_refresh_meas_corrected();
 
-// This needs to be defined by the user of this library
-int32_t vna_measure_point(uint64_t freq, meas_point_t *point);
-
 int32_t vna_measure();
 
 #ifdef __cplusplus

@@ -152,7 +152,7 @@ uint32_t vna_get_calib_point_count() {
  * Check if the currently active calibration set is valid
  * @return True if the calibration data set is valid, false otherwise
  */
-bool vna_get_calib_valid() {
+bool vna_is_calib_valid() {
     // Check if there are any active calibration data sets
     if (active_calib < 0)
         return false; // No active calibration data set
@@ -164,7 +164,7 @@ bool vna_get_calib_valid() {
  * @param meas_meta Pointer to the measurement metadata
  * @return True if the calibration data set is valid for the measurement data set, false otherwise
  */
-bool vna_get_calib_valid_for_meas(const meas_meta_t *meas_meta) {
+bool vna_is_calib_valid_for_meas(const meas_meta_t *meas_meta) {
     // Check if there are any active calibration data sets
     if (active_calib < 0)
         return false; // No active calibration data set
@@ -408,13 +408,13 @@ int32_t vna_calibrate() {
     for (int i = 0; i < to_calibrate->meta.num_points; i++) {
         if (i == 0)
             // Calibrate the first point
-            status = vna_calibrate_point(to_calibrate->meta.start_freq, &to_calibrate->points[i]);
+            status = vna_measure_point(to_calibrate->meta.start_freq, &to_calibrate->points[i]);
         else if (i == to_calibrate->meta.num_points - 1)
             // Calibrate the last point
-            status = vna_calibrate_point(to_calibrate->meta.stop_freq, &to_calibrate->points[i]);
+            status = vna_measure_point(to_calibrate->meta.stop_freq, &to_calibrate->points[i]);
         else
             // Calibrate the intermediate points
-            status = vna_calibrate_point(to_calibrate->meta.start_freq + i * to_calibrate->meta.freq_step,
+            status = vna_measure_point(to_calibrate->meta.start_freq + i * to_calibrate->meta.freq_step,
                                          &to_calibrate->points[i]);
 
         // Stop calibration if an error occurs

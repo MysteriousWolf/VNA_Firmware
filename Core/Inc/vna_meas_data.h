@@ -55,6 +55,9 @@ int32_t vna_set_frequency_range(meas_meta_t *meta, uint64_t start_freq, uint64_t
 
 int32_t vna_set_point_count(meas_meta_t *meta, uint32_t max_points, uint32_t count);
 
+// This needs to be defined by the user of this library (used by both calib and meas to acquire data points)
+int32_t vna_measure_point(uint64_t freq, meas_point_t *point);
+
 #ifdef __cplusplus
 }
 #endif

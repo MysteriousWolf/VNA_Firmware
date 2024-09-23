@@ -48,9 +48,6 @@ int32_t vna_get_calib_point(uint64_t freq, meas_point_t *point);
 int32_t vna_apply_calib_single(uint64_t freq, const meas_point_t *point, meas_point_t *point_corrected);
 int32_t vna_apply_calib(const meas_data_t *meas_data_set, meas_data_t *meas_data_set_corrected);
 
-// This needs to be defined by the user of this library
-int32_t vna_calibrate_point(uint64_t freq, meas_point_t *point);
-
 int32_t vna_calibrate();
 
 #ifdef __cplusplus

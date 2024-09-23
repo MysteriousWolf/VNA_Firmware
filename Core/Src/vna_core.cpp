@@ -199,11 +199,6 @@ int32_t vna_measure_point(const uint64_t freq, meas_point_t* point) {
     return 0;
 }
 
-int32_t vna_calibrate_point(const uint64_t freq, meas_point_t* point) {
-    // This does the same as the measurement function
-    return vna_measure_point(freq, point);
-}
-
 // External interrupt handler
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
     // Signal the event flag
