@@ -212,16 +212,48 @@ const scpi_command_t scpi_commands[] = {
     {.pattern = "DEBug:VCO:MUTe", .callback = VNA_Debug_VCO_MUTE,}, // Debug VCO mute control
 
     /* VNA */
-    /*{.pattern = "MEASure:VOLTage:DC?", .callback = DMM_MeasureVoltageDcQ,},
-    {.pattern = "CONFigure:VOLTage:DC", .callback = DMM_ConfigureVoltageDc,},
-    {.pattern = "MEASure:VOLTage:DC:RATio?", .callback = SCPI_StubQ,},
-    {.pattern = "MEASure:VOLTage:AC?", .callback = DMM_MeasureVoltageAcQ,},
-    {.pattern = "MEASure:CURRent:DC?", .callback = SCPI_StubQ,},
-    {.pattern = "MEASure:CURRent:AC?", .callback = SCPI_StubQ,},
-    {.pattern = "MEASure:RESistance?", .callback = SCPI_StubQ,},
-    {.pattern = "MEASure:FRESistance?", .callback = SCPI_StubQ,},
-    {.pattern = "MEASure:FREQuency?", .callback = SCPI_StubQ,},
-    {.pattern = "MEASure:PERiod?", .callback = SCPI_StubQ,},*/
+    // Calibration
+    {.pattern = "SENSe:CORRection:ENable", .callback = NULL,}, // Enable correction data
+    {.pattern = "SENSe:CORRection:ENable?", .callback = NULL,}, // Check if meas correction is enabled
+
+
+    {.pattern = "SENSe:CORRection:STATus?", .callback = NULL,}, // Check if the correction data is valid
+    {.pattern = "SENSe:CORRection:VALid?", .callback = NULL,}, // Checks if the current measurement data matches the current correction data
+
+    {.pattern = "SENSe:CORRection:SELECT", .callback = NULL,}, // Select the active calibration ID
+    {.pattern = "SENSe:CORRection:SELECT?", .callback = NULL,}, // Get the current selected correction set ID
+
+    {.pattern = "SENSe:CORRection:FREQuency:START", .callback = NULL,}, // The start frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:START?", .callback = NULL,}, // Get the start frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:STOP", .callback = NULL,}, // The stop frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:STOP?", .callback = NULL,}, // Get the stop frequency of the current cal set
+
+    {.pattern = "SENSe:CORRection:SWEep:POINts", .callback = NULL,}, // The number of points in the current cal set
+    {.pattern = "SENSe:CORRection:SWEep:POINts?", .callback = NULL,}, // Get the number of points in the current cal set
+
+    {.pattern = "SENSe:CORRection:COLLect", .callback = NULL,}, // This starts the through callibration (s21)
+
+    // Measurement
+    {.pattern = "SENSe:STATus?", .callback = NULL,}, // Checks if the current measurement data is valid
+
+    {.pattern = "SENSe:SELECT", .callback = NULL,}, // Select the active measurement ID
+    {.pattern = "SENSe:SELECT?", .callback = NULL,}, // Get the active measurement ID
+
+    {.pattern = "SENSe:FREQuency:START", .callback = NULL,}, // The start frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:START?", .callback = NULL,}, // Get the start frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:STOP", .callback = NULL,}, // The stop frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:STOP?", .callback = NULL,}, // Get the stop frequency of the current measurement set
+
+    {.pattern = "SENSe:SWEep:POINts", .callback = NULL,}, // The number of points in the current measurement set
+    {.pattern = "SENSe:SWEep:POINts?", .callback = NULL,}, // Get the number of points in the current measurement set
+
+    {.pattern = "SENSe:REApply", .callback = NULL,}, // Attempts to reapply the calibration data to the current measurement data
+
+    // Measurement and acquisition commands
+    {.pattern = "INITiate:IMMediate", .callback = NULL,}, // This starts a single measurement
+
+    // To fetch the current measured data (RDATA/SDATA not supported, FDATA returns polar amplitude and phase in degrees)
+    {.pattern = "CALCulate:DATA?", .callback = NULL,},
 
     SCPI_CMD_LIST_END
 };
