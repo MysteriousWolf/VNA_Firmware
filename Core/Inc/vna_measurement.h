@@ -31,7 +31,7 @@ int32_t vna_set_meas_point_count(meas_meta_t *meta, uint32_t count);
 uint64_t vna_get_meas_start_frequency();
 uint64_t vna_get_meas_stop_frequency();
 uint32_t vna_get_meas_point_count();
-bool vna_get_meas_valid();
+bool vna_is_meas_valid();
 
 // Measurement data getters
 int32_t vna_get_active_meas();

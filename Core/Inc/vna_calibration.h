@@ -32,8 +32,8 @@ int32_t vna_set_calib_to_match_meas(const meas_data_t *meas_data_set);
 uint64_t vna_get_calib_start_frequency();
 uint64_t vna_get_calib_stop_frequency();
 uint32_t vna_get_calib_point_count();
-bool vna_get_calib_valid();
-bool vna_get_calib_valid_for_meas(const meas_meta_t *meas_meta);
+bool vna_is_calib_valid();
+bool vna_is_calib_valid_for_meas(const meas_meta_t *meas_meta);
 
 // Calibration data getters
 int32_t vna_get_active_calib();

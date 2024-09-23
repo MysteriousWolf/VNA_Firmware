@@ -136,7 +136,7 @@ uint32_t vna_get_meas_point_count() {
  * Check if the active measurement data set is valid
  * @return True if the active measurement data set is valid, false otherwise
  */
-bool vna_get_meas_valid() {
+bool vna_is_meas_valid() {
     // Check if there are any active calibration data sets
     if (active_meas < 0)
         return false; // No active calibration data set
