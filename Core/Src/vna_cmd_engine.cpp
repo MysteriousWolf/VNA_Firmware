@@ -15,6 +15,9 @@ scpi_choice_def_t scpi_choice_frequency_units[] = {
     SCPI_CHOICE_LIST_END
 };
 
+// Pointer message hack
+static const char *SEND_MEAS_DATA;
+
 uint8_t out_queue_stack[QUEUE_STACK_SIZE];
 TX_QUEUE out_queue;
 //uint8_t in_queue_stack[QUEUE_STACK_SIZE];
@@ -28,6 +31,7 @@ scpi_error_t scpi_error_queue_data[SCPI_ERROR_QUEUE_SIZE];
 // Init global settings
 bool echo_enabled = ECHO_DEFAULT;
 
+// Initialize the command engine queue and parser
 void vna_init_cmd_engine() {
     // Initialize the message queues
     tx_queue_create(&out_queue, (char*)"SCPI Out Queue", 1, out_queue_stack, QUEUE_STACK_SIZE);
@@ -40,7 +44,7 @@ void vna_init_cmd_engine() {
               scpi_error_queue_data, SCPI_ERROR_QUEUE_SIZE);
 }
 
-void vna_process_command(UCHAR* buffer, ULONG length) {
+void vna_process_command(const UCHAR* buffer, const ULONG length) {
     // Echo the command if enabled
     if (echo_enabled)
         send_data_to_queue(&out_queue, (const char*)buffer, length);
@@ -48,16 +52,25 @@ void vna_process_command(UCHAR* buffer, ULONG length) {
     SCPI_Input(&scpi_context, (const char*)buffer, static_cast<int>(length));
 }
 
-// SCPI core functions
+/* SCPI core functions */
 size_t SCPI_Write(scpi_t* context, const char* data, size_t len) {
-    (void)context; // Unused?
+    (void)context; // Unused
+
+    if (data == SEND_MEAS_DATA) {
+        // Select corrected or uncorrected data if correction is enabled
+        const meas_data_t* to_send = vna_is_calib_enabled() ? &meas_data_corrected : &meas_data[vna_get_active_meas()];
+
+        // TODO: THIS WON'T WORK YET! Send the measurement data to the message queue in packed form
+        // Send the measurement data to the message queue in packed form
+        return send_data_to_queue(&out_queue, (const char*)to_send, sizeof(meas_data_t));
+    }
 
     // Send the data to the message queue in packed form
     return send_data_to_queue(&out_queue, data, len);
 }
 
 int SCPI_Error(scpi_t* context, int_fast16_t err) {
-    (void)context; // Unused?
+    (void)context; // Unused
 
     char err_str[17] = "ERROR: ";
     char err_code[7];
@@ -69,6 +82,21 @@ int SCPI_Error(scpi_t* context, int_fast16_t err) {
 
     // Send the error to the message queue in packed form
     return static_cast<int>(send_data_to_queue(&out_queue, err_str, len));
+}
+
+scpi_result_t SCPI_Control(scpi_t * context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val) {
+    (void) context;
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_Flush(scpi_t * context) {
+    (void) context;
+    return SCPI_RES_OK;
+}
+
+scpi_result_t SCPI_Reset(scpi_t * context) {
+    (void) context;
+    return SCPI_RES_OK;
 }
 
 /**
@@ -127,7 +155,7 @@ static scpi_result_t VNA_Debug_VCO_FREQ(scpi_t* context) {
 
     // Parse the numeric part of the command
     if (!SCPI_ParamUInt64(context, &frequency, true)) {
-        // Return an error code if parsing fails
+        // Report an error code if parsing fails
         SCPI_ResultInt64(context, -1);
         return SCPI_RES_ERR;
     }
@@ -141,15 +169,15 @@ static scpi_result_t VNA_Debug_VCO_FREQ(scpi_t* context) {
 
     // Ensure frequency is within the valid range for your instrument
     if (!in_range64(frequency, FREQ_RANGE)) {
-        // Return an error code if out of range
+        // Report an error code if out of range
         SCPI_ResultInt64(context, -2);
         return SCPI_RES_ERR;
     }
 
-    // Set the frequency using your existing method
+    // Set the STUW81300 frequency directly using the driver
     const auto actual_frequency = static_cast<int64_t>(set_frequency_STUW81300(frequency));
 
-    // Return the actual frequency set back to the user
+    // Report the actual frequency set back to the user
     SCPI_ResultInt64(context, actual_frequency);
 
     if (actual_frequency == 0)
@@ -175,17 +203,416 @@ static scpi_result_t VNA_Debug_VCO_MUTE(scpi_t* context) {
     return SCPI_RES_OK;
 }
 
-// VNA SCPI command list
-// TODO: Add VNA-specific commands
+/* VNA SCPI commands*/
+// Core commands
+static scpi_result_t scpi_vco_stat_q(scpi_t* context) {
+    SCPI_ResultInt32(context, vna_get_status());
+    return SCPI_RES_OK;
+}
 
+// Calibration related functions
+static scpi_result_t scpi_vco_corr_en(scpi_t* context) {
+    bool correction_en_param;
+
+    // Read the state parameter
+    if (SCPI_ParamBool(context, &correction_en_param, false)) {
+        vna_enable_calib(correction_en_param);
+    }
+    else {
+        // If none is provided, toggle the correction state
+        correction_en_param = !vna_is_calib_enabled();
+        vna_enable_calib(correction_en_param);
+    }
+
+    // Report the actual state
+    SCPI_ResultBool(context, vna_is_calib_enabled());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_en_q(scpi_t* context) {
+    // Report the state
+    SCPI_ResultBool(context, vna_is_calib_enabled());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_stat_q(scpi_t* context) {
+    // Report whether the correction data is valid
+    SCPI_ResultBool(context, vna_is_calib_valid());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_val_q(scpi_t* context) {
+    // Report whether the current correction data is valid for the currently active measurement data
+    SCPI_ResultBool(context, vna_is_calib_valid_for_meas(vna_get_active_calib_meta()));
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_sel(scpi_t* context) {
+    uint32_t calib_id;
+
+    // Get the calibration ID from the command
+    if (!SCPI_ParamUInt32(context, &calib_id, true)) {
+        return SCPI_RES_ERR;
+    }
+
+    // Set the active calibration data set
+    if (const int32_t status = vna_set_active_calib(calib_id); status <= -10) {
+        // Report the error code with success - the calibration set was changed but could not be applied
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_OK;
+    } else if (status < 0)
+        return SCPI_RES_ERR;
+
+    // If everything is OK, report the active calibration ID
+    SCPI_ResultUInt32(context, calib_id);
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_sel_q(scpi_t* context) {
+    // Report the active calibration ID
+    SCPI_ResultInt32(context, vna_get_active_calib());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_freq_start(scpi_t* context) {
+    uint64_t frequency;
+    int32_t multiplier;
+
+    // Parse the numeric part of the command
+    if (!SCPI_ParamUInt64(context, &frequency, true)) {
+        // Report an error code if parsing fails
+        SCPI_ResultInt64(context, -1);
+        return SCPI_RES_ERR;
+    }
+
+    // Check for unit parameters and convert
+    if (!SCPI_ParamChoice(context, scpi_choice_frequency_units, &multiplier, false))
+        multiplier = 1; // Default to Hz if no unit is provided
+
+    // Convert the frequency to Hz
+    frequency *= multiplier;
+
+    // Ensure frequency is within the valid range for your instrument
+    if (!in_range64(frequency, FREQ_RANGE)) {
+        // Report an error code if out of range
+        SCPI_ResultInt64(context, -2);
+        return SCPI_RES_ERR;
+    }
+
+    // Set the calibration start frequency
+    const int32_t status = vna_set_calib_start_frequency(frequency);
+
+    if (status < 0) {
+        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        return SCPI_RES_ERR;
+    }
+
+    // Report the actual frequency set back to the user
+    SCPI_ResultUInt64(context, frequency);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_freq_start_q(scpi_t* context) {
+    // Report the start frequency
+    SCPI_ResultUInt64(context, vna_get_calib_start_frequency());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_freq_stop(scpi_t* context) {
+    uint64_t frequency;
+    int32_t multiplier;
+
+    // Parse the numeric part of the command
+    if (!SCPI_ParamUInt64(context, &frequency, true)) {
+        // Report an error code if parsing fails
+        SCPI_ResultInt64(context, -1);
+        return SCPI_RES_ERR;
+    }
+
+    // Check for unit parameters and convert
+    if (!SCPI_ParamChoice(context, scpi_choice_frequency_units, &multiplier, false))
+        multiplier = 1; // Default to Hz if no unit is provided
+
+    // Convert the frequency to Hz
+    frequency *= multiplier;
+
+    // Ensure frequency is within the valid range for your instrument
+    if (!in_range64(frequency, FREQ_RANGE)) {
+        // Report an error code if out of range
+        SCPI_ResultInt64(context, -2);
+        return SCPI_RES_ERR;
+    }
+
+    // Set the calibration stop frequency
+    const int32_t status = vna_set_calib_stop_frequency(frequency);
+
+    if (status < 0) {
+        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        return SCPI_RES_ERR;
+    }
+
+    // Report the actual frequency set back to the user
+    SCPI_ResultUInt64(context, frequency);
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_freq_stop_q(scpi_t* context) {
+    // Report the stop frequency
+    SCPI_ResultUInt64(context, vna_get_calib_stop_frequency());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_points(scpi_t* context) {
+    uint32_t point_count;
+
+    // Get the calibration ID from the command
+    if (!SCPI_ParamUInt32(context, &point_count, true)) {
+        return SCPI_RES_ERR;
+    }
+
+    // Set the active calibration data set
+    if (const int32_t status = vna_set_calib_point_count(point_count); status < 0) {
+        // Report the error code
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_ERR;
+    }
+
+    // If everything is OK, report the active calibration ID
+    SCPI_ResultUInt32(context, point_count);
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_points_q(scpi_t* context) {
+    // Report the number of points
+    SCPI_ResultUInt32(context, vna_get_calib_point_count());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_corr_coll(scpi_t* context) {
+    // Start the calibration collection
+    if (const int32_t status = vna_request_job(VNA_JOB_CALIBRATE); status < 0) {
+        // Report the error code
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_ERR;
+    }
+
+    // If everything is OK, report the active calibration ID
+    SCPI_ResultUInt32(context, vna_get_active_calib());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_stat_q(scpi_t* context) {
+    // Report whether the measurement data is valid
+    SCPI_ResultBool(context, vna_is_meas_valid());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_sel(scpi_t* context) {
+    uint32_t calib_id;
+
+    // Get the measurement ID from the command
+    if (!SCPI_ParamUInt32(context, &calib_id, true)) {
+        return SCPI_RES_ERR;
+    }
+
+    // Set the active measurement data set
+    if (const int32_t status = vna_set_active_meas(calib_id); status <= -10) {
+        // Report the error code with success - the calibration set was changed but could not be applied
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_OK;
+    } else if (status < 0)
+        return SCPI_RES_ERR;
+
+    // If everything is OK, report the active calibration ID
+    SCPI_ResultUInt32(context, calib_id);
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_sel_q(scpi_t* context) {
+    // Report the active measurement ID
+    SCPI_ResultInt32(context, vna_get_active_meas());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_freq_start(scpi_t* context) {
+    uint64_t frequency;
+    int32_t multiplier;
+
+    // Parse the numeric part of the command
+    if (!SCPI_ParamUInt64(context, &frequency, true)) {
+        // Report an error code if parsing fails
+        SCPI_ResultInt64(context, -1);
+        return SCPI_RES_ERR;
+    }
+
+    // Check for unit parameters and convert
+    if (!SCPI_ParamChoice(context, scpi_choice_frequency_units, &multiplier, false))
+        multiplier = 1; // Default to Hz if no unit is provided
+
+    // Convert the frequency to Hz
+    frequency *= multiplier;
+
+    // Ensure frequency is within the valid range for your instrument
+    if (!in_range64(frequency, FREQ_RANGE)) {
+        // Report an error code if out of range
+        SCPI_ResultInt64(context, -2);
+        return SCPI_RES_ERR;
+    }
+
+    // Set the measurement start frequency
+    const int32_t status = vna_set_meas_start_frequency(frequency);
+
+    if (status < 0) {
+        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        return SCPI_RES_ERR;
+    }
+
+    // Report the actual frequency set back to the user
+    SCPI_ResultUInt64(context, frequency);
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_freq_start_q(scpi_t* context) {
+    // Report the start frequency
+    SCPI_ResultUInt64(context, vna_get_calib_start_frequency());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_freq_stop(scpi_t* context) {
+    uint64_t frequency;
+    int32_t multiplier;
+
+    // Parse the numeric part of the command
+    if (!SCPI_ParamUInt64(context, &frequency, true)) {
+        // Report an error code if parsing fails
+        SCPI_ResultInt64(context, -1);
+        return SCPI_RES_ERR;
+    }
+
+    // Check for unit parameters and convert
+    if (!SCPI_ParamChoice(context, scpi_choice_frequency_units, &multiplier, false))
+        multiplier = 1; // Default to Hz if no unit is provided
+
+    // Convert the frequency to Hz
+    frequency *= multiplier;
+
+    // Ensure frequency is within the valid range for your instrument
+    if (!in_range64(frequency, FREQ_RANGE)) {
+        // Report an error code if out of range
+        SCPI_ResultInt64(context, -2);
+        return SCPI_RES_ERR;
+    }
+
+    // Set the measurement stop frequency
+    const int32_t status = vna_set_meas_stop_frequency(frequency);
+
+    if (status < 0) {
+        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        return SCPI_RES_ERR;
+    }
+
+    // Report the actual frequency set back to the user
+    SCPI_ResultUInt64(context, frequency);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_freq_stop_q(scpi_t* context) {
+    // Report the stop frequency
+    SCPI_ResultUInt64(context, vna_get_calib_stop_frequency());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_points(scpi_t* context) {
+    uint32_t point_count;
+
+    // Get the measurement ID from the command
+    if (!SCPI_ParamUInt32(context, &point_count, true)) {
+        return SCPI_RES_ERR;
+    }
+
+    // Set the active measurement data set
+    if (const int32_t status = vna_set_meas_point_count(point_count); status < 0) {
+        // Report the error code
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_ERR;
+    }
+
+    // If everything is OK, report the active calibration ID
+    SCPI_ResultUInt32(context, point_count);
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_points_q(scpi_t* context) {
+    // Report the number of points
+    SCPI_ResultUInt32(context, vna_get_meas_point_count());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_reapply_calib(scpi_t* context) {
+    // Start the corrected measured data calculation
+    if (const int32_t status = vna_request_job(VNA_JOB_APPLY_CORRECTION); status < 0) {
+        // Report the error code
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_ERR;
+    }
+
+    // If everything is OK, report the active calibration ID
+    SCPI_ResultUInt32(context, vna_get_active_meas());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_meas_init(scpi_t* context) {
+    // Start the measurement collection
+    if (const int32_t status = vna_request_job(VNA_JOB_MEASURE); status < 0) {
+        // Report the error code
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_ERR;
+    }
+
+    // If everything is OK, report the active measurement ID
+    SCPI_ResultUInt32(context, vna_get_active_meas());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_vco_calc_data_q(scpi_t* context) {
+    // Message the write function to send the packed measurement data
+    SCPI_ResultArbitraryBlockData(context, SEND_MEAS_DATA, sizeof(SEND_MEAS_DATA));
+
+    return SCPI_RES_OK;
+}
+
+// Core SCPI structs
 scpi_interface_t scpi_interface = {
     .error = SCPI_Error,
     .write = SCPI_Write,
-    .control = NULL,
-    .flush = NULL,
-    .reset = NULL,
+    .control = SCPI_Control,
+    .flush = SCPI_Flush,
+    .reset = SCPI_Reset,
 };
 
+// VNA Command list structure
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {.pattern = "*CLS", .callback = SCPI_CoreCls,},
@@ -221,48 +648,50 @@ const scpi_command_t scpi_commands[] = {
     {.pattern = "DEBug:VCO:MUTe", .callback = VNA_Debug_VCO_MUTE,}, // Debug VCO mute control
 
     /* VNA */
+    // Core commands
+    {.pattern = "STATus:OPERation?", .callback = scpi_vco_stat_q,}, // To get the current vna core state
+
     // Calibration
-    {.pattern = "SENSe:CORRection:ENable", .callback = NULL,}, // Enable correction data
-    {.pattern = "SENSe:CORRection:ENable?", .callback = NULL,}, // Check if meas correction is enabled
+    {.pattern = "SENSe:CORRection:ENable", .callback = scpi_vco_corr_en,}, // Enable correction data
+    {.pattern = "SENSe:CORRection:ENable?", .callback = scpi_vco_corr_en_q,}, // Check if meas correction is enabled
 
+    {.pattern = "SENSe:CORRection:STATus?", .callback = scpi_vco_corr_stat_q,}, // Check if the correction data is valid
+    {.pattern = "SENSe:CORRection:VALid?", .callback = scpi_vco_corr_val_q,}, // Checks if the current measurement data matches the current correction data
 
-    {.pattern = "SENSe:CORRection:STATus?", .callback = NULL,}, // Check if the correction data is valid
-    {.pattern = "SENSe:CORRection:VALid?", .callback = NULL,}, // Checks if the current measurement data matches the current correction data
+    {.pattern = "SENSe:CORRection:SELect", .callback = scpi_vco_corr_sel,}, // Select the active calibration ID
+    {.pattern = "SENSe:CORRection:SELect?", .callback = scpi_vco_corr_sel_q,}, // Get the current selected correction set ID
 
-    {.pattern = "SENSe:CORRection:SELECT", .callback = NULL,}, // Select the active calibration ID
-    {.pattern = "SENSe:CORRection:SELECT?", .callback = NULL,}, // Get the current selected correction set ID
+    {.pattern = "SENSe:CORRection:FREQuency:START", .callback = scpi_vco_corr_freq_start,}, // The start frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:START?", .callback = scpi_vco_corr_freq_start_q,}, // Get the start frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:STOP", .callback = scpi_vco_corr_freq_stop,}, // The stop frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:STOP?", .callback = scpi_vco_corr_freq_stop_q,}, // Get the stop frequency of the current cal set
 
-    {.pattern = "SENSe:CORRection:FREQuency:START", .callback = NULL,}, // The start frequency of the current cal set
-    {.pattern = "SENSe:CORRection:FREQuency:START?", .callback = NULL,}, // Get the start frequency of the current cal set
-    {.pattern = "SENSe:CORRection:FREQuency:STOP", .callback = NULL,}, // The stop frequency of the current cal set
-    {.pattern = "SENSe:CORRection:FREQuency:STOP?", .callback = NULL,}, // Get the stop frequency of the current cal set
+    {.pattern = "SENSe:CORRection:SWEep:POINts", .callback = scpi_vco_corr_points,}, // The number of points in the current cal set
+    {.pattern = "SENSe:CORRection:SWEep:POINts?", .callback = scpi_vco_corr_points_q,}, // Get the number of points in the current cal set
 
-    {.pattern = "SENSe:CORRection:SWEep:POINts", .callback = NULL,}, // The number of points in the current cal set
-    {.pattern = "SENSe:CORRection:SWEep:POINts?", .callback = NULL,}, // Get the number of points in the current cal set
-
-    {.pattern = "SENSe:CORRection:COLLect", .callback = NULL,}, // This starts the through callibration (s21)
+    {.pattern = "SENSe:CORRection:COLLect", .callback = scpi_vco_corr_coll,}, // This starts the through calibration (s21)
 
     // Measurement
-    {.pattern = "SENSe:STATus?", .callback = NULL,}, // Checks if the current measurement data is valid
+    {.pattern = "SENSe:STATus?", .callback = scpi_vco_meas_stat_q,}, // Checks if the current measurement data is valid
 
-    {.pattern = "SENSe:SELECT", .callback = NULL,}, // Select the active measurement ID
-    {.pattern = "SENSe:SELECT?", .callback = NULL,}, // Get the active measurement ID
+    {.pattern = "SENSe:SELect", .callback = scpi_vco_meas_sel,}, // Select the active measurement ID
+    {.pattern = "SENSe:SELect?", .callback = scpi_vco_meas_sel_q,}, // Get the active measurement ID
 
-    {.pattern = "SENSe:FREQuency:START", .callback = NULL,}, // The start frequency of the current measurement set
-    {.pattern = "SENSe:FREQuency:START?", .callback = NULL,}, // Get the start frequency of the current measurement set
-    {.pattern = "SENSe:FREQuency:STOP", .callback = NULL,}, // The stop frequency of the current measurement set
-    {.pattern = "SENSe:FREQuency:STOP?", .callback = NULL,}, // Get the stop frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:START", .callback = scpi_vco_meas_freq_start,}, // The start frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:START?", .callback = scpi_vco_meas_freq_start_q,}, // Get the start frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:STOP", .callback = scpi_vco_meas_freq_stop,}, // The stop frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:STOP?", .callback = scpi_vco_meas_freq_stop_q,}, // Get the stop frequency of the current measurement set
 
-    {.pattern = "SENSe:SWEep:POINts", .callback = NULL,}, // The number of points in the current measurement set
-    {.pattern = "SENSe:SWEep:POINts?", .callback = NULL,}, // Get the number of points in the current measurement set
+    {.pattern = "SENSe:SWEep:POINts", .callback = scpi_vco_meas_points,}, // The number of points in the current measurement set
+    {.pattern = "SENSe:SWEep:POINts?", .callback = scpi_vco_meas_points_q,}, // Get the number of points in the current measurement set
 
-    {.pattern = "SENSe:REApply", .callback = NULL,}, // Attempts to reapply the calibration data to the current measurement data
+    {.pattern = "SENSe:REApply", .callback = scpi_vco_meas_reapply_calib,}, // Attempts to reapply the calibration data to the current measurement data
 
     // Measurement and acquisition commands
-    {.pattern = "INITiate:IMMediate", .callback = NULL,}, // This starts a single measurement
+    {.pattern = "INITiate:IMMediate", .callback = scpi_vco_meas_init,}, // This starts a single measurement
 
     // To fetch the current measured data (RDATA/SDATA not supported, FDATA returns polar amplitude and phase in degrees)
-    {.pattern = "CALCulate:DATA?", .callback = NULL,},
+    {.pattern = "CALCulate:DATA?", .callback = scpi_vco_calc_data_q,},
 
     SCPI_CMD_LIST_END
 };

@@ -176,6 +176,10 @@ void vna_init() {
             status = VNA_STATUS_MEASURING;
             vna_measure();
             break;
+        case VNA_JOB_APPLY_CORRECTION:
+            status = VNA_STATUS_APPLYING_CORRECTION;
+            vna_refresh_meas_corrected();
+            break;
         default:
             status = VNA_STATUS_ERROR;
         }
@@ -186,6 +190,31 @@ void vna_init() {
     }
 }
 
+/**
+ * Get the current status of the VNA
+ *
+ * @return The current status of the VNA
+ */
+vna_status vna_get_status() {
+    return status;
+}
+
+/**
+ * Request a job to be executed by the VNA
+ *
+ * @param job The job to be executed
+ * @return 0 on success, -1 on error
+ */
+int32_t vna_request_job(vna_job job) {
+    // Send the job to the main thread
+    return tx_queue_send(&main_queue, &job, TX_WAIT_FOREVER);
+}
+
+/**
+ * Perform a calibration of the active measurement data set
+ *
+ * @return 0 on success, -1 if no active measurement data set is set, -10 or less if error applying calibration
+ */
 int32_t vna_measure_point(const uint64_t freq, meas_point_t* point) {
     // Start SPI measurement
     dsp_start_measurement(freq);

@@ -55,14 +55,14 @@ extern bool echo_enabled;
 // C visible functions //
 // ThreadX related
 void vna_init_cmd_engine();
-void vna_process_command(UCHAR* buffer, ULONG length);
+void vna_process_command(const UCHAR* buffer, ULONG length);
 
 // SCPI core functions
 size_t SCPI_Write(scpi_t* context, const char* data, size_t len);
 int SCPI_Error(scpi_t * context, int_fast16_t err);
-//scpi_result_t SCPI_Control(scpi_t * context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val);
-//scpi_result_t SCPI_Reset(scpi_t * context);
-//scpi_result_t SCPI_Flush(scpi_t * context);
+scpi_result_t SCPI_Control(scpi_t * context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val);
+scpi_result_t SCPI_Reset(scpi_t * context);
+scpi_result_t SCPI_Flush(scpi_t * context);
 
 // SCPI commands
 
