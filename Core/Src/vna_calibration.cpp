@@ -68,12 +68,35 @@ int32_t vna_set_calib_frequency_range(uint64_t start_freq, uint64_t stop_freq) {
  * @param count Number of calibration points
  * @return 0 if successful, negative error code otherwise
  */
-int32_t vna_set_calib_point_count(meas_meta_t *meta, const uint32_t count) {
+int32_t vna_set_calib_point_count(meas_meta_t* meta, const uint32_t count) {
     // Check if there are any active calibration data sets
     if (active_calib < 0)
         return -3; // No active calibration data set
 
     return vna_set_point_count(meta, CALIB_MAX_POINTS, count);
+}
+
+/**
+ * Set the active calibration data set to match the metadata of a measurement data set
+ * @param meas_data_set Pointer to the measurement data set
+ * @return 0 if successful, negative error code otherwise
+ */
+int32_t vna_set_calib_to_match_meas(const meas_data_t* meas_data_set) {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return -3; // No active calibration data set
+
+    calib_data_t* calib = &calib_data[active_calib];
+
+    // Clone the metadata from the measurement data set
+    calib->meta = meas_data_set->meta;
+
+    // Make sure the number of points is within the calibration data set limits
+    if (calib->meta.num_points > CALIB_MAX_POINTS)
+        calib->meta.num_points = CALIB_MAX_POINTS;
+
+    // Re-set point count using the metadata methods to ensure consistency and recalculate steps
+    return vna_set_point_count(&calib->meta, CALIB_MAX_POINTS, calib->meta.num_points);
 }
 
 /**

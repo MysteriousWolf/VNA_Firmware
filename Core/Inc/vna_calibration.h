@@ -31,6 +31,8 @@ int32_t vna_set_calib_stop_frequency(uint64_t freq);
 int32_t vna_set_calib_frequency_range(uint64_t start_freq, uint64_t stop_freq);
 int32_t vna_set_calib_point_count(meas_meta_t *meta, uint32_t count);
 
+int32_t vna_set_calib_to_match_meas(const meas_data_t *meas_data_set);
+
 int32_t vna_get_active_calib();
 
 int32_t vna_get_calib_point(uint64_t freq, meas_point_t *point);
