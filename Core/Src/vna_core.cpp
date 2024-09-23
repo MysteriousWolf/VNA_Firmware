@@ -23,6 +23,18 @@ void vna_init() {
     // Initialize the signaling (LEDs, buttons, etc.)
     vna_signaling_init();
 
+    // Set status to initializing calibration data
+    status = VNA_STATUS_INIT_CALIB;
+
+    // Initialize the calibration data
+    vna_meas_init();
+
+    // Set the status to initializing measurement data
+    status = VNA_STATUS_INIT_MEAS;
+
+    // Initialize the measurement data
+    vna_meas_init();
+
     // Set status to initializing
     status = VNA_STATUS_INIT;
 

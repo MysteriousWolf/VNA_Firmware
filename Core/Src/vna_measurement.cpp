@@ -5,11 +5,29 @@
 #include "vna_measurement.h"
 
 meas_data_t meas_data[MEAS_STORAGE_CNT] = {};
+meas_data_t meas_data_corrected = {};
 
 int32_t active_meas = 0;
 
+/**
+ * Initialize the measurement data sets
+ */
 void vna_meas_init() {
-    // Do nothing for now
+    // Initialize calibration data sets for max frequency range with max steps
+    for (auto & [meta, points] : meas_data) {
+        meta.start_freq = MIN_FREQ;
+        meta.stop_freq = MAX_FREQ;
+        meta.num_points = MEAS_MAX_POINTS;
+        meta.freq_step = (MAX_FREQ - MIN_FREQ) / (MEAS_MAX_POINTS - 1);
+        meta.valid = false;
+    }
+
+    // Initialize the corrected data set
+    meas_data_corrected.meta.start_freq = MIN_FREQ;
+    meas_data_corrected.meta.stop_freq = MAX_FREQ;
+    meas_data_corrected.meta.num_points = MEAS_MAX_POINTS;
+    meas_data_corrected.meta.freq_step = (MAX_FREQ - MIN_FREQ) / (MEAS_MAX_POINTS - 1);
+    meas_data_corrected.meta.valid = false;
 }
 
 /**
@@ -24,7 +42,7 @@ int32_t vna_set_active_meas(const uint32_t meas_idx) {
 
     active_meas = static_cast<int32_t>(meas_idx);
 
-    return 0;
+    return vna_refresh_meas_corrected();
 }
 
 /**
@@ -70,16 +88,59 @@ int32_t vna_set_meas_frequency_range(const uint64_t start_freq, const uint64_t s
 /**
  * Set the number of points of the active measurement data set
  *
- * @param meta Pointer to the measurement metadata
  * @param count Number of points
  * @return 0 on success, -1 if no active measurement data set is set
  */
-int32_t vna_set_meas_point_count(meas_meta_t *meta, const uint32_t count) {
+int32_t vna_set_meas_point_count(const uint32_t count) {
     // Check if there are any active calibration data sets
     if (active_meas < 0)
         return -3; // No active calibration data set
 
-    return vna_set_point_count(meta, MEAS_MAX_POINTS, count);
+    return vna_set_point_count(&meas_data[active_meas].meta, MEAS_MAX_POINTS, count);
+}
+
+/**
+ * Get the start frequency of the active measurement data set
+ * @return Start frequency of the active measurement data set
+ */
+uint64_t vna_get_meas_start_frequency() {
+    // Check if there are any active calibration data sets
+    if (active_meas < 0)
+        return 0; // No active calibration data set
+    return meas_data[active_meas].meta.start_freq;
+}
+
+/**
+ * Get the stop frequency of the active measurement data set
+ * @return Stop frequency of the active measurement data set
+ */
+uint64_t vna_get_meas_stop_frequency() {
+    // Check if there are any active calibration data sets
+    if (active_meas < 0)
+        return 0; // No active calibration data set
+    return meas_data[active_meas].meta.stop_freq;
+}
+
+/**
+ * Get the number of points of the active measurement data set
+ * @return Number of points of the active measurement data set
+ */
+uint32_t vna_get_meas_point_count() {
+    // Check if there are any active calibration data sets
+    if (active_meas < 0)
+        return 0; // No active calibration data set
+    return meas_data[active_meas].meta.num_points;
+}
+
+/**
+ * Check if the active measurement data set is valid
+ * @return True if the active measurement data set is valid, false otherwise
+ */
+bool vna_get_meas_valid() {
+    // Check if there are any active calibration data sets
+    if (active_meas < 0)
+        return false; // No active calibration data set
+    return meas_data[active_meas].meta.valid;
 }
 
 /**
@@ -89,6 +150,40 @@ int32_t vna_set_meas_point_count(meas_meta_t *meta, const uint32_t count) {
  */
 int32_t vna_get_active_meas() {
     return active_meas;
+}
+
+/**
+ * Get the active measurement metadata
+ *
+ * @return Pointer to the active measurement metadata, nullptr if no active measurement data set is set
+ */
+meas_meta_t *vna_get_active_meas_meta() {
+    // Check if there are any active measurement data sets
+    if (active_meas < 0)
+        return nullptr; // No active measurement data set
+    return &meas_data[active_meas].meta;
+}
+
+/**
+ * Refresh the corrected measurement data set
+ *
+ * @return 0 on success, -1 if no active measurement data set is set, -10 or less if error applying calibration
+ */
+int32_t vna_refresh_meas_corrected() {
+    // Attempt to apply correction to the currently active measurement set
+    if (active_meas < 0)
+        return -1; // No active measurement data set
+
+    // Invalidate currently corrected data set
+    meas_data_corrected.meta.valid = false;
+
+    // Apply the calibration set
+    const int32_t status = vna_apply_calib(&meas_data[active_meas], &meas_data_corrected);
+
+    if (status < 0)
+        return status - 10; // Error applying calibration
+
+    return status; // Success
 }
 
 /**
@@ -135,5 +230,5 @@ int32_t vna_measure() {
     if (status == 0)
         to_measure->meta.valid = true;
 
-    return status;
+    return vna_refresh_meas_corrected();
 }

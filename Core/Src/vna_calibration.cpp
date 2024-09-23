@@ -8,20 +8,37 @@ calib_data_t calib_data[CALIB_STORAGE_CNT] = {};
 
 int32_t active_calib = 0;
 
+bool correction_enabled = true;
+
+/**
+ * Initialize calibration data sets
+ */
 void vna_calib_init() {
-    // Do nothing for now
+    // Initialize calibration data sets for max frequency range with max steps
+    for (auto& [meta, points] : calib_data) {
+        meta.start_freq = MIN_FREQ;
+        meta.stop_freq = MAX_FREQ;
+        meta.num_points = CALIB_MAX_POINTS;
+        meta.freq_step = (MAX_FREQ - MIN_FREQ) / CALIB_MAX_POINTS;
+        meta.valid = false;
+    }
 }
 
 /**
  * Set the active calibration data set
  * @param calib_idx Index of the calibration data set
- * @return Index of the active calibration data set (-1 if invalid index)
+ * @return Index of the active calibration data set (-1 if invalid index, -10 or more if error)
  */
 int32_t vna_set_active_calib(const uint32_t calib_idx) {
     if (calib_idx >= CALIB_STORAGE_CNT)
         return -1;
 
     active_calib = static_cast<int32_t>(calib_idx);
+
+    // Attempt to apply calibration to the current measuremenet set
+    if (const int32_t status = vna_refresh_meas_corrected(); status < 0)
+        return status;
+
     return active_calib;
 }
 
@@ -55,7 +72,7 @@ int32_t vna_set_calib_stop_frequency(const uint64_t freq) {
  * @param stop_freq Stop frequency in Hz
  * @return 0 if successful, negative error code otherwise
  */
-int32_t vna_set_calib_frequency_range(uint64_t start_freq, uint64_t stop_freq) {
+int32_t vna_set_calib_frequency_range(const uint64_t start_freq, const uint64_t stop_freq) {
     if (active_calib < 0)
         return -3; // No active calibration data set
 
@@ -64,16 +81,15 @@ int32_t vna_set_calib_frequency_range(uint64_t start_freq, uint64_t stop_freq) {
 
 /**
  * Set the number of calibration points for the active calibration data set
- * @param meta Pointer to the calibration metadata structure
  * @param count Number of calibration points
  * @return 0 if successful, negative error code otherwise
  */
-int32_t vna_set_calib_point_count(meas_meta_t* meta, const uint32_t count) {
+int32_t vna_set_calib_point_count(const uint32_t count) {
     // Check if there are any active calibration data sets
     if (active_calib < 0)
         return -3; // No active calibration data set
 
-    return vna_set_point_count(meta, CALIB_MAX_POINTS, count);
+    return vna_set_point_count(&calib_data[active_calib].meta, CALIB_MAX_POINTS, count);
 }
 
 /**
@@ -100,11 +116,108 @@ int32_t vna_set_calib_to_match_meas(const meas_data_t* meas_data_set) {
 }
 
 /**
+ * Get the start frequency of the active calibration data set
+ * @return Start frequency in Hz
+ */
+uint64_t vna_get_calib_start_frequency() {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return 0; // No active calibration data set
+    return calib_data[active_calib].meta.start_freq;
+}
+
+/**
+ * Get the stop frequency of the active calibration data set
+ * @return Stop frequency in Hz
+ */
+uint64_t vna_get_calib_stop_frequency() {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return 0; // No active calibration data set
+    return calib_data[active_calib].meta.stop_freq;
+}
+
+/**
+ * Get the number of calibration points of the active calibration data set
+ * @return Number of calibration points
+ */
+uint32_t vna_get_calib_point_count() {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return 0; // No active calibration data set
+    return calib_data[active_calib].meta.num_points;
+}
+
+/**
+ * Check if the currently active calibration set is valid
+ * @return True if the calibration data set is valid, false otherwise
+ */
+bool vna_get_calib_valid() {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return false; // No active calibration data set
+    return calib_data[active_calib].meta.valid;
+}
+
+/**
+ * Check if the currently active calibration set is valid for a given measurement data set
+ * @param meas_meta Pointer to the measurement metadata
+ * @return True if the calibration data set is valid for the measurement data set, false otherwise
+ */
+bool vna_get_calib_valid_for_meas(const meas_meta_t *meas_meta) {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return false; // No active calibration data set
+
+    // Get the current calibration data set
+    const calib_data_t* calib = &calib_data[active_calib];
+
+    // Check if calibration data is valid
+    if (!calib->meta.valid)
+        return false;
+
+    // Check if the measurement frequency range is within the calibration frequency range
+    if (meas_meta->start_freq < calib->meta.start_freq || meas_meta->stop_freq > calib->meta.stop_freq)
+        return false;
+
+    // All checks passed, calibration data is valid for the measurement data set
+    return true;
+}
+
+/**
  * Get the active calibration data set
  * @return Index of the active calibration data set
  */
 int32_t vna_get_active_calib() {
     return active_calib;
+}
+
+/**
+ * Get the metadata of the active calibration data set
+ * @return Pointer to the metadata of the active calibration data set
+ */
+meas_meta_t *vna_get_active_calib_meta() {
+    // Check if there are any active calibration data sets
+    if (active_calib < 0)
+        return nullptr; // No active calibration data set
+    return &calib_data[active_calib].meta;
+}
+
+/**
+ * Enable or disable calibration correction
+ * @param enable True to enable, false to disable
+ * @return 0 if successful, negative error code otherwise
+ */
+void vna_enable_calib(const bool enable) {
+    correction_enabled = enable;
+}
+
+/**
+ * Check if calibration correction is enabled
+ * @return True if calibration correction is enabled, false otherwise
+ */
+bool vna_is_calib_enabled() {
+    return correction_enabled;
 }
 
 /**
@@ -209,18 +322,18 @@ int32_t vna_apply_calib(const meas_data_t* meas_data_set, meas_data_t* meas_data
 
     const calib_data_t* calib = &calib_data[active_calib];
 
-    // Start frequency mismatch
-    if (meas_data_set->meta.start_freq != calib_data[active_calib].meta.start_freq)
-        return -3; // Start frequency mismatch
+    // Start frequency out of calibration range
+    if (meas_data_set->meta.start_freq < calib->meta.start_freq)
+        return -3; // Start frequency lower than in calibration data set
 
-    // Stop frequency mismatch
-    if (meas_data_set->meta.stop_freq != calib_data[active_calib].meta.stop_freq)
-        return -4; // Stop frequency mismatch
+    // Stop frequency out of calibration range
+    if (meas_data_set->meta.stop_freq > calib->meta.stop_freq)
+        return -4; // Stop frequency higher than in calibration data set
 
-    // Transfer unchanged data
-    meas_data_set_corrected->meta.start_freq = meas_data_set->meta.start_freq;
-    meas_data_set_corrected->meta.stop_freq = meas_data_set->meta.stop_freq;
-    meas_data_set_corrected->meta.num_points = meas_data_set->meta.num_points;
+    // Transfer unchanged metadata (except for the valid flag)
+    meas_meta_t new_meta = meas_data_set->meta;
+    new_meta.valid = false;
+    meas_data_set_corrected->meta = new_meta;
 
     // Apply calibration to each point without using the get_calib_point function to improve efficiency
     // We use the fact that the calibration data is equally spaced and strictly monotonic in frequency
@@ -228,29 +341,19 @@ int32_t vna_apply_calib(const meas_data_t* meas_data_set, meas_data_t* meas_data
 
     // We know the first index of the calib and meas sets match exactly
     int calib_idx = 0;
-    uint64_t high_freq = calib->meta.start_freq;
     uint64_t low_freq = calib->meta.start_freq;
-    uint64_t delta_freq = 0;
+    uint64_t high_freq = calib->meta.start_freq + calib->meta.freq_step;
 
     // Iterate over measurement points and apply calibration using integer linear interpolation
     for (int i = 0; i < meas_data_set->meta.num_points; i++) {
         // Calculate the corresponding frequency for the current measurement point
         const uint64_t meas_freq = meas_data_set->meta.start_freq + i * meas_data_set->meta.freq_step;
 
-        // Move calibration index forward if needed
+        // Move calibration index forward if needed (never backwards)
         while (high_freq < meas_freq && calib_idx < calib->meta.num_points - 1) {
             calib_idx++;
             low_freq = high_freq;
-            high_freq = calib->meta.start_freq + calib_idx * calib->meta.freq_step;
-            delta_freq = high_freq - low_freq;
-        }
-
-        // Move calibration index backward if needed (should not happen in normal cases)
-        while (high_freq > meas_freq && calib_idx > 0) {
-            calib_idx--;
-            high_freq = low_freq;
-            low_freq = calib->meta.start_freq + (calib_idx - 1) * calib->meta.freq_step;
-            delta_freq = high_freq - low_freq;
+            high_freq += calib->meta.freq_step;
         }
 
         // If indexes match exactly, no interpolation is needed
@@ -265,15 +368,19 @@ int32_t vna_apply_calib(const meas_data_t* meas_data_set, meas_data_t* meas_data
         // Calculate the proportion of the difference between the two calibration points
         const uint64_t freq_diff = meas_freq - low_freq;
 
-        // Interpolating phase and amplitude
+        // Interpolating phase
         meas_data_set_corrected->points[i].phase = meas_data_set->points[i].phase -
         (calib->points[calib_idx - 1].phase + (freq_diff * (calib->points[calib_idx].phase - calib->points[calib_idx
-            - 1].phase)) / delta_freq);
+            - 1].phase)) / calib->meta.freq_step);
 
+        // Interpolating amplitude
         meas_data_set_corrected->points[i].amplitude = meas_data_set->points[i].amplitude -
         (calib->points[calib_idx - 1].amplitude + (freq_diff * (calib->points[calib_idx].amplitude - calib->points[
-            calib_idx - 1].amplitude)) / delta_freq);
+            calib_idx - 1].amplitude)) / calib->meta.freq_step);
     }
+
+    // Everything went well, mark the corrected data set as valid
+    meas_data_set_corrected->meta.valid = true;
 
     return 0;
 }

@@ -66,7 +66,7 @@ int32_t vna_set_stop_frequency(meas_meta_t* meta, const uint64_t freq) {
  * @param stop_freq Stop frequency in Hz
  * @return int32_t 0 if successful, -1 if frequency is out of range, -2 if start frequency is more than stop frequency
  */
-int32_t vna_set_frequency_range(meas_meta_t *meta, uint64_t start_freq, uint64_t stop_freq) {
+int32_t vna_set_frequency_range(meas_meta_t *meta, const uint64_t start_freq, const uint64_t stop_freq) {
     // Frequency is out of range
     if (!in_range64(start_freq, FREQ_RANGE) || !in_range64(stop_freq, FREQ_RANGE))
         return -1;
