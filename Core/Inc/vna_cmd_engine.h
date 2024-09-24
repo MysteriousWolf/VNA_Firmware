@@ -39,8 +39,6 @@ extern "C" {
 // Message queues
 extern uint8_t out_queue_stack[QUEUE_STACK_SIZE];
 extern TX_QUEUE out_queue;
-//extern uint8_t in_queue_stack[QUEUE_STACK_SIZE];
-//extern TX_QUEUE in_queue;
 
 // SCPI core variables
 extern const scpi_command_t scpi_commands[];
@@ -59,10 +57,10 @@ void vna_process_command(const UCHAR* buffer, ULONG length);
 
 // SCPI core functions
 size_t SCPI_Write(scpi_t* context, const char* data, size_t len);
-int SCPI_Error(scpi_t * context, int_fast16_t err);
-scpi_result_t SCPI_Control(scpi_t * context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val);
-scpi_result_t SCPI_Reset(scpi_t * context);
-scpi_result_t SCPI_Flush(scpi_t * context);
+int SCPI_Error(scpi_t* context, int_fast16_t err);
+scpi_result_t SCPI_Control(scpi_t* context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val);
+scpi_result_t SCPI_Reset(scpi_t* context);
+scpi_result_t SCPI_Flush(scpi_t* context);
 
 // SCPI commands
 

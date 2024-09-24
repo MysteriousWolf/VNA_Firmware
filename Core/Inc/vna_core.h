@@ -27,7 +27,8 @@
 #define MAIN_QUEUE_STACK_SIZE  16
 
 // Event flags
-#define MEASUREMENT_EVENT_FLAG 0b1
+#define MEASUREMENT_EVENT_FLAG  0b01
+#define READOUT_EVENT_FLAG      0b10
 
 // This needs to be visible from C code
 #ifdef __cplusplus
@@ -58,6 +59,8 @@ typedef enum vna_status {
     VNA_STATUS_MEASURING,
     VNA_STATUS_APPLYING_CORRECTION,
 } vna_status;
+
+extern TX_EVENT_FLAGS_GROUP measurement_event_flags;
 
 void vna_init();
 [[noreturn]] VOID vna_thread_entry(ULONG initial_input);

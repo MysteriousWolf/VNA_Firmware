@@ -15,7 +15,7 @@ void init_utils() {
  * Delay in microseconds (requires a timer with a 1 MHz frequency)
  * @param us The number of microseconds to delay
  */
-void delay_us(const int us){
+void delay_us(const int us) {
     // Get the current timer value
     const uint32_t start = __HAL_TIM_GET_COUNTER(&US_TIMER);
     while ((__HAL_TIM_GET_COUNTER(&US_TIMER) - start) < us); // Wait until enough microseconds have passed
@@ -67,7 +67,7 @@ uint32_t limit(const uint32_t value, const uint32_t min, const uint32_t max) {
  * @param source The source character array
  * @return The number of characters appended
  */
-size_t appendCharArray(char* destination, const int destinationSize, const char* source) {
+size_t appendCharArray(char* destination, const size_t destinationSize, const char* source) {
     // Find the length of the destination string (up to destinationSize - 1)
     int destLength = 0;
     while (destLength < destinationSize - 1 && destination[destLength] != '\0') {
@@ -93,7 +93,7 @@ size_t appendCharArray(char* destination, const int destinationSize, const char*
  * @param terminate Whether to null-terminate the string
  * @return The number of characters written to the buffer
  */
-size_t intToCharArray(int value, char *buffer, const int bufferSize, const bool terminate) {
+size_t intToCharArray(int value, char* buffer, const size_t bufferSize, const bool terminate) {
     // Calculate the length required for the integer string
     int length = 0;
     int temp = value;
@@ -155,22 +155,57 @@ size_t intToCharArray(int value, char *buffer, const int bufferSize, const bool 
 }
 
 /**
+ * Get the next message type from a queue
+ * @param char_queue The threadx queue to get the message type from
+ * @return The message type
+ */
+vna_msg_type get_next_msg_type(TX_QUEUE* char_queue) {
+    vna_msg_type msg_type;
+    if (const UINT status = tx_queue_receive(char_queue, &msg_type, TX_WAIT_FOREVER); status != TX_SUCCESS)
+        return VNA_MSG_NONE;
+    return msg_type;
+}
+
+/**
+ * Get the next message length from a queue
+ * @param char_queue The threadx queue to get the message length from
+ * @return The message length
+ */
+size_t get_next_msg_len(TX_QUEUE* char_queue) {
+    ULONG len = 0;
+    // Receive the length first
+    if (const UINT status = tx_queue_receive(char_queue, &len, TX_WAIT_FOREVER); status != TX_SUCCESS) {
+        // Handle error
+        return 0;
+    }
+    return len;
+}
+
+/**
  * Send string data with length information to a queue
  * @param char_queue The threadx queue to send data to
  * @param data The data to send
  * @param len The length of the data
  * @return The actual number of characters sent
  */
-size_t send_data_to_queue(TX_QUEUE *char_queue, const char *data, const size_t len) {
+size_t send_text_to_queue(TX_QUEUE* char_queue, const char* data, const size_t len) {
     ULONG packed_data;
     size_t i;
-    const size_t num_chunks = len / 4;   // Number of full ULONG chunks
-    const size_t remaining_chars = len % 4;  // Remaining characters after full chunks
+    const size_t num_chunks = len / 4; // Number of full ULONG chunks
+    const size_t remaining_chars = len % 4; // Remaining characters after full chunks
     size_t sent_chars = 0;
 
-    // Send the length of the data first
+    // Send the message type first
+    ULONG msg_type = VNA_MSG_TEXT;
+    UINT status = tx_queue_send(char_queue, &msg_type, TX_WAIT_FOREVER);
+    if (status != TX_SUCCESS) {
+        // Handle error
+        return sent_chars;
+    }
+
+    // Send the length of the data second
     ULONG length = len;
-    UINT status = tx_queue_send(char_queue, &length, TX_WAIT_FOREVER);
+    status = tx_queue_send(char_queue, &length, TX_WAIT_FOREVER);
     if (status != TX_SUCCESS) {
         // Handle error
         return sent_chars;
@@ -217,20 +252,14 @@ size_t send_data_to_queue(TX_QUEUE *char_queue, const char *data, const size_t l
  * @param len The length specified in the header of the received data
  * @return The actual number of characters received
  */
-size_t receive_data_from_queue(TX_QUEUE *char_queue, char *buffer, ULONG *len) {
+size_t receive_text_from_queue(TX_QUEUE* char_queue, char* buffer, const size_t len) {
+    UINT status = 0;
     ULONG packed_data;
     size_t i;
     size_t received_chars = 0;
 
-    // Receive the length first
-    UINT status = tx_queue_receive(char_queue, len, TX_WAIT_FOREVER);
-    if (status != TX_SUCCESS) {
-        // Handle error
-        return received_chars;
-    }
-
-    const size_t num_chunks = *len / 4;
-    const size_t remaining_chars = *len % 4;
+    const size_t num_chunks = len / 4;
+    const size_t remaining_chars = len % 4;
 
     // Receive the full ULONG chunks
     for (i = 0; i < num_chunks; i++) {
@@ -260,4 +289,24 @@ size_t receive_data_from_queue(TX_QUEUE *char_queue, char *buffer, ULONG *len) {
     }
 
     return received_chars;
+}
+
+size_t send_meas_data_to_queue(TX_QUEUE* char_queue) {
+    // Send the message type first
+    ULONG msg_type = VNA_MSG_MEAS_DATA;
+    UINT status = tx_queue_send(char_queue, &msg_type, TX_WAIT_FOREVER);
+    if (status != TX_SUCCESS) {
+        // Handle error
+        return 0;
+    }
+
+    // Send the length of the data second (0 as a placeholder)
+    ULONG length = 0;
+    status = tx_queue_send(char_queue, &length, TX_WAIT_FOREVER);
+    if (status != TX_SUCCESS) {
+        // Handle error
+        return 0;
+    }
+
+    return sizeof(char*); // pointer message hack length
 }

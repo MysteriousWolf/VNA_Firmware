@@ -27,7 +27,7 @@ void vna_init() {
     status = VNA_STATUS_INIT_CALIB;
 
     // Initialize the calibration data
-    vna_meas_init();
+    vna_calib_init();
 
     // Set the status to initializing measurement data
     status = VNA_STATUS_INIT_MEAS;

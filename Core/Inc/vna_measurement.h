@@ -15,8 +15,11 @@
 extern "C" {
 #endif
 
-extern meas_data_t meas_data[MEAS_STORAGE_CNT];
-extern meas_data_t meas_data_corrected;
+// Storage for measurement data
+extern meas_data_t meas_data[MEAS_STORAGE_CNT]; // Main storage for measurement data
+extern meas_data_t meas_data_corrected; // Corrected measurement data "cache"
+
+extern meas_data_t meas_data_outgoing; // Outgoing measurement data - copied at the time of request
 
 void vna_meas_init();
 
@@ -35,7 +38,7 @@ bool vna_is_meas_valid();
 
 // Measurement data getters
 int32_t vna_get_active_meas();
-meas_meta_t *vna_get_active_meas_meta();
+meas_meta_t* vna_get_active_meas_meta();
 
 int32_t vna_refresh_meas_corrected();
 

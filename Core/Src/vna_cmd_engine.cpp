@@ -15,13 +15,8 @@ scpi_choice_def_t scpi_choice_frequency_units[] = {
     SCPI_CHOICE_LIST_END
 };
 
-// Pointer message hack
-static const char *SEND_MEAS_DATA;
-
 uint8_t out_queue_stack[QUEUE_STACK_SIZE];
 TX_QUEUE out_queue;
-//uint8_t in_queue_stack[QUEUE_STACK_SIZE];
-//TX_QUEUE in_queue;
 
 scpi_t scpi_context;
 
@@ -35,7 +30,6 @@ bool echo_enabled = ECHO_DEFAULT;
 void vna_init_cmd_engine() {
     // Initialize the message queues
     tx_queue_create(&out_queue, (char*)"SCPI Out Queue", 1, out_queue_stack, QUEUE_STACK_SIZE);
-    //tx_queue_create(&in_queue, (char*)"SCPI In Queue", 1, in_queue_stack, QUEUE_STACK_SIZE);
 
     // Initialize the SCPI parser
     SCPI_Init(&scpi_context, scpi_commands, &scpi_interface, scpi_units_def,
@@ -47,7 +41,7 @@ void vna_init_cmd_engine() {
 void vna_process_command(const UCHAR* buffer, const ULONG length) {
     // Echo the command if enabled
     if (echo_enabled)
-        send_data_to_queue(&out_queue, (const char*)buffer, length);
+        send_text_to_queue(&out_queue, (const char*)buffer, length);
     // Process the command
     SCPI_Input(&scpi_context, (const char*)buffer, static_cast<int>(length));
 }
@@ -56,17 +50,8 @@ void vna_process_command(const UCHAR* buffer, const ULONG length) {
 size_t SCPI_Write(scpi_t* context, const char* data, size_t len) {
     (void)context; // Unused
 
-    if (data == SEND_MEAS_DATA) {
-        // Select corrected or uncorrected data if correction is enabled
-        const meas_data_t* to_send = vna_is_calib_enabled() ? &meas_data_corrected : &meas_data[vna_get_active_meas()];
-
-        // TODO: THIS WON'T WORK YET! Send the measurement data to the message queue in packed form
-        // Send the measurement data to the message queue in packed form
-        return send_data_to_queue(&out_queue, (const char*)to_send, sizeof(meas_data_t));
-    }
-
     // Send the data to the message queue in packed form
-    return send_data_to_queue(&out_queue, data, len);
+    return send_text_to_queue(&out_queue, data, len);
 }
 
 int SCPI_Error(scpi_t* context, int_fast16_t err) {
@@ -81,21 +66,21 @@ int SCPI_Error(scpi_t* context, int_fast16_t err) {
     size_t len = appendCharArray(err_str, 16, "\r\n");
 
     // Send the error to the message queue in packed form
-    return static_cast<int>(send_data_to_queue(&out_queue, err_str, len));
+    return static_cast<int>(send_text_to_queue(&out_queue, err_str, len));
 }
 
-scpi_result_t SCPI_Control(scpi_t * context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val) {
-    (void) context;
+scpi_result_t SCPI_Control(scpi_t* context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val) {
+    (void)context; // Unused
     return SCPI_RES_OK;
 }
 
-scpi_result_t SCPI_Flush(scpi_t * context) {
-    (void) context;
+scpi_result_t SCPI_Flush(scpi_t* context) {
+    (void)context; // Unused
     return SCPI_RES_OK;
 }
 
-scpi_result_t SCPI_Reset(scpi_t * context) {
-    (void) context;
+scpi_result_t SCPI_Reset(scpi_t* context) {
+    (void)context; // Unused
     return SCPI_RES_OK;
 }
 
@@ -108,7 +93,6 @@ scpi_result_t SCPI_Reset(scpi_t * context) {
  * Return SCPI_RES_OK
  */
 static scpi_result_t VNA_CoreTstQ(scpi_t* context) {
-    // TODO: Implement the self-test
     SCPI_ResultInt32(context, 0);
     return SCPI_RES_OK;
 }
@@ -120,8 +104,7 @@ static scpi_result_t VNA_CoreEcho(scpi_t* context) {
     /* read first parameter if present */
     if (SCPI_ParamBool(context, &echo_param, false)) {
         echo_enabled = echo_param;
-    }
-    else {
+    } else {
         echo_enabled = !echo_enabled;
     }
 
@@ -191,8 +174,7 @@ static scpi_result_t VNA_Debug_VCO_MUTE(scpi_t* context) {
     // Read the mute parameter
     if (SCPI_ParamBool(context, &mute_param, false)) {
         mute_STUW81300(mute_param);
-    }
-    else {
+    } else {
         // If none is provided, toggle the mute state
         mute_param = !is_muted_STUW81300();
         mute_STUW81300(mute_param);
@@ -217,8 +199,7 @@ static scpi_result_t scpi_vco_corr_en(scpi_t* context) {
     // Read the state parameter
     if (SCPI_ParamBool(context, &correction_en_param, false)) {
         vna_enable_calib(correction_en_param);
-    }
-    else {
+    } else {
         // If none is provided, toggle the correction state
         correction_en_param = !vna_is_calib_enabled();
         vna_enable_calib(correction_en_param);
@@ -309,7 +290,7 @@ static scpi_result_t scpi_vco_corr_freq_start(scpi_t* context) {
     const int32_t status = vna_set_calib_start_frequency(frequency);
 
     if (status < 0) {
-        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        SCPI_ResultInt64(context, status * 10); // Report the error code x10 to differentiate from other errors
         return SCPI_RES_ERR;
     }
 
@@ -354,7 +335,7 @@ static scpi_result_t scpi_vco_corr_freq_stop(scpi_t* context) {
     const int32_t status = vna_set_calib_stop_frequency(frequency);
 
     if (status < 0) {
-        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        SCPI_ResultInt64(context, status * 10); // Report the error code x10 to differentiate from other errors
         return SCPI_RES_ERR;
     }
 
@@ -478,7 +459,7 @@ static scpi_result_t scpi_vco_meas_freq_start(scpi_t* context) {
     const int32_t status = vna_set_meas_start_frequency(frequency);
 
     if (status < 0) {
-        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        SCPI_ResultInt64(context, status * 10); // Report the error code x10 to differentiate from other errors
         return SCPI_RES_ERR;
     }
 
@@ -524,7 +505,7 @@ static scpi_result_t scpi_vco_meas_freq_stop(scpi_t* context) {
     const int32_t status = vna_set_meas_stop_frequency(frequency);
 
     if (status < 0) {
-        SCPI_ResultInt64(context, status*10); // Report the error code x10 to differentiate from other errors
+        SCPI_ResultInt64(context, status * 10); // Report the error code x10 to differentiate from other errors
         return SCPI_RES_ERR;
     }
 
@@ -597,8 +578,18 @@ static scpi_result_t scpi_vco_meas_init(scpi_t* context) {
 }
 
 static scpi_result_t scpi_vco_calc_data_q(scpi_t* context) {
-    // Message the write function to send the packed measurement data
-    SCPI_ResultArbitraryBlockData(context, SEND_MEAS_DATA, sizeof(SEND_MEAS_DATA));
+    // Copy the data to the write protected output buffer
+    meas_data_outgoing = vna_is_calib_enabled() ? meas_data_corrected : meas_data[vna_get_active_meas()];
+
+    // Send the message to start the data transfer
+    send_meas_data_to_queue(&out_queue);
+
+    // Suspend reading until the data is fully sent
+    ULONG actual_flags;
+    tx_event_flags_get(&measurement_event_flags, READOUT_EVENT_FLAG, TX_AND_CLEAR, &actual_flags, TX_WAIT_FOREVER);
+
+    // Send dummy text to the queue to finish the message with standard scpi response
+    SCPI_ResultText(context, "");
 
     return SCPI_RES_OK;
 }
@@ -655,21 +646,32 @@ const scpi_command_t scpi_commands[] = {
     {.pattern = "SENSe:CORRection:ENable", .callback = scpi_vco_corr_en,}, // Enable correction data
     {.pattern = "SENSe:CORRection:ENable?", .callback = scpi_vco_corr_en_q,}, // Check if meas correction is enabled
 
-    {.pattern = "SENSe:CORRection:STATus?", .callback = scpi_vco_corr_stat_q,}, // Check if the correction data is valid
-    {.pattern = "SENSe:CORRection:VALid?", .callback = scpi_vco_corr_val_q,}, // Checks if the current measurement data matches the current correction data
+    // Check if the correction data is valid
+    {.pattern = "SENSe:CORRection:STATus?", .callback = scpi_vco_corr_stat_q,},
+    // Checks if the current measurement data matches the current correction data
+    {.pattern = "SENSe:CORRection:VALid?", .callback = scpi_vco_corr_val_q,},
 
-    {.pattern = "SENSe:CORRection:SELect", .callback = scpi_vco_corr_sel,}, // Select the active calibration ID
-    {.pattern = "SENSe:CORRection:SELect?", .callback = scpi_vco_corr_sel_q,}, // Get the current selected correction set ID
+    // Select the active calibration ID
+    {.pattern = "SENSe:CORRection:SELect", .callback = scpi_vco_corr_sel,},
+    // Get the current selected correction set ID
+    {.pattern = "SENSe:CORRection:SELect?", .callback = scpi_vco_corr_sel_q,},
 
-    {.pattern = "SENSe:CORRection:FREQuency:START", .callback = scpi_vco_corr_freq_start,}, // The start frequency of the current cal set
-    {.pattern = "SENSe:CORRection:FREQuency:START?", .callback = scpi_vco_corr_freq_start_q,}, // Get the start frequency of the current cal set
-    {.pattern = "SENSe:CORRection:FREQuency:STOP", .callback = scpi_vco_corr_freq_stop,}, // The stop frequency of the current cal set
-    {.pattern = "SENSe:CORRection:FREQuency:STOP?", .callback = scpi_vco_corr_freq_stop_q,}, // Get the stop frequency of the current cal set
+    // The start frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:START", .callback = scpi_vco_corr_freq_start,},
+    // Get the start frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:START?", .callback = scpi_vco_corr_freq_start_q,},
+    // The stop frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:STOP", .callback = scpi_vco_corr_freq_stop,},
+    // Get the stop frequency of the current cal set
+    {.pattern = "SENSe:CORRection:FREQuency:STOP?", .callback = scpi_vco_corr_freq_stop_q,},
 
-    {.pattern = "SENSe:CORRection:SWEep:POINts", .callback = scpi_vco_corr_points,}, // The number of points in the current cal set
-    {.pattern = "SENSe:CORRection:SWEep:POINts?", .callback = scpi_vco_corr_points_q,}, // Get the number of points in the current cal set
+    // The number of points in the current cal set
+    {.pattern = "SENSe:CORRection:SWEep:POINts", .callback = scpi_vco_corr_points,},
+    // Get the number of points in the current cal set
+    {.pattern = "SENSe:CORRection:SWEep:POINts?", .callback = scpi_vco_corr_points_q,},
 
-    {.pattern = "SENSe:CORRection:COLLect", .callback = scpi_vco_corr_coll,}, // This starts the through calibration (s21)
+    // This starts the through calibration (s21)
+    {.pattern = "SENSe:CORRection:COLLect", .callback = scpi_vco_corr_coll,},
 
     // Measurement
     {.pattern = "SENSe:STATus?", .callback = scpi_vco_meas_stat_q,}, // Checks if the current measurement data is valid
@@ -677,20 +679,29 @@ const scpi_command_t scpi_commands[] = {
     {.pattern = "SENSe:SELect", .callback = scpi_vco_meas_sel,}, // Select the active measurement ID
     {.pattern = "SENSe:SELect?", .callback = scpi_vco_meas_sel_q,}, // Get the active measurement ID
 
-    {.pattern = "SENSe:FREQuency:START", .callback = scpi_vco_meas_freq_start,}, // The start frequency of the current measurement set
-    {.pattern = "SENSe:FREQuency:START?", .callback = scpi_vco_meas_freq_start_q,}, // Get the start frequency of the current measurement set
-    {.pattern = "SENSe:FREQuency:STOP", .callback = scpi_vco_meas_freq_stop,}, // The stop frequency of the current measurement set
-    {.pattern = "SENSe:FREQuency:STOP?", .callback = scpi_vco_meas_freq_stop_q,}, // Get the stop frequency of the current measurement set
+    // The start frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:START", .callback = scpi_vco_meas_freq_start,},
+    // Get the start frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:START?", .callback = scpi_vco_meas_freq_start_q,},
+    // The stop frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:STOP", .callback = scpi_vco_meas_freq_stop,},
+    // Get the stop frequency of the current measurement set
+    {.pattern = "SENSe:FREQuency:STOP?", .callback = scpi_vco_meas_freq_stop_q,},
 
-    {.pattern = "SENSe:SWEep:POINts", .callback = scpi_vco_meas_points,}, // The number of points in the current measurement set
-    {.pattern = "SENSe:SWEep:POINts?", .callback = scpi_vco_meas_points_q,}, // Get the number of points in the current measurement set
+    // The number of points in the current measurement set
+    {.pattern = "SENSe:SWEep:POINts", .callback = scpi_vco_meas_points,},
+    // Get the number of points in the current measurement set
+    {.pattern = "SENSe:SWEep:POINts?", .callback = scpi_vco_meas_points_q,},
 
-    {.pattern = "SENSe:REApply", .callback = scpi_vco_meas_reapply_calib,}, // Attempts to reapply the calibration data to the current measurement data
+    // Attempts to reapply the calibration data to the current measurement data
+    {.pattern = "SENSe:REApply", .callback = scpi_vco_meas_reapply_calib,},
 
     // Measurement and acquisition commands
     {.pattern = "INITiate:IMMediate", .callback = scpi_vco_meas_init,}, // This starts a single measurement
 
-    // To fetch the current measured data (RDATA/SDATA not supported, FDATA returns polar amplitude and phase in degrees)
+    // To fetch the current measured data
+    // RDATA/SDATA not supported, always returns FDATA returns polar amplitude and phase in degrees
+    // Returns interchanging phase and amplitude separated by a comma
     {.pattern = "CALCulate:DATA?", .callback = scpi_vco_calc_data_q,},
 
     SCPI_CMD_LIST_END

@@ -116,3 +116,32 @@ int32_t vna_set_point_count(meas_meta_t *meta, const uint32_t max_points, const 
     // Return success
     return 0;
 }
+
+size_t meas_point_to_char_array(const meas_point_t *point, char *buffer, const size_t buffer_size) {
+    // Check if the buffer is large enough
+    if (buffer_size < MEAS_POINT_CHAR_LEN)
+        return 0;
+
+    size_t actual_length = 0;
+
+    // Buffer for the amplitude
+    char amplitude_chars[MEAS_AMP_CHAR_LEN + 1];
+
+    // Convert the phase to a string and copy it to the buffer
+    actual_length += intToCharArray(point->phase, buffer, MEAS_PHASE_CHAR_LEN + 1, false);
+
+    // Add a separator
+    buffer[actual_length++] = ',';
+
+    // Terminate the string
+    buffer[actual_length] = '\0';
+
+    // Convert the amplitude to a string
+    intToCharArray(point->amplitude, amplitude_chars, MEAS_AMP_CHAR_LEN + 1, true);
+
+    // Concat the amplitude to the buffer
+    actual_length = appendCharArray(buffer, buffer_size, amplitude_chars);
+
+    // Return success
+    return actual_length;
+}

@@ -9,13 +9,18 @@
 #include "vna_stuw81300.h"
 
 // Global measurement data constraints
-#define MEAS_TYPE               int16_t    // Type of measurement data (16 bits should be more than enough)
+#define MEAS_TYPE               int16_t     // Type of measurement data (16 bits should be more than enough)
 
 #define CALIB_STORAGE_CNT       5           // Number of calibration data sets
 #define CALIB_MAX_POINTS        500         // Maximum number of calibration points
 
 #define MEAS_STORAGE_CNT        2           // Number of measurement data sets
-#define MEAS_MAX_POINTS         5000       // Maximum number of measurement points
+#define MEAS_MAX_POINTS         5000        // Maximum number of measurement points
+
+// Maximum length of a measurement point pair in characters
+#define MEAS_PHASE_CHAR_LEN     5           // 16-bit integer max length
+#define MEAS_AMP_CHAR_LEN       5           // 16-bit integer max length
+#define MEAS_POINT_CHAR_LEN     (MEAS_PHASE_CHAR_LEN + MEAS_AMP_CHAR_LEN + 2) // values + separator + null terminator
 
 // This needs to be visible from C code
 #ifdef __cplusplus
@@ -57,6 +62,9 @@ int32_t vna_set_point_count(meas_meta_t *meta, uint32_t max_points, uint32_t cou
 
 // This needs to be defined by the user of this library (used by both calib and meas to acquire data points)
 int32_t vna_measure_point(uint64_t freq, meas_point_t *point);
+
+// Data formatting functions
+size_t meas_point_to_char_array(const meas_point_t *point, char *buffer, size_t buffer_size);
 
 #ifdef __cplusplus
 }

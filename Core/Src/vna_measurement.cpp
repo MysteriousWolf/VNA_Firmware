@@ -7,6 +7,8 @@
 meas_data_t meas_data[MEAS_STORAGE_CNT] = {};
 meas_data_t meas_data_corrected = {};
 
+meas_data_t meas_data_outgoing = {};
+
 int32_t active_meas = 0;
 
 /**
@@ -14,7 +16,7 @@ int32_t active_meas = 0;
  */
 void vna_meas_init() {
     // Initialize calibration data sets for max frequency range with max steps
-    for (auto & [meta, points] : meas_data) {
+    for (auto& [meta, points] : meas_data) {
         meta.start_freq = MIN_FREQ;
         meta.stop_freq = MAX_FREQ;
         meta.num_points = MEAS_MAX_POINTS;
@@ -157,7 +159,7 @@ int32_t vna_get_active_meas() {
  *
  * @return Pointer to the active measurement metadata, nullptr if no active measurement data set is set
  */
-meas_meta_t *vna_get_active_meas_meta() {
+meas_meta_t* vna_get_active_meas_meta() {
     // Check if there are any active measurement data sets
     if (active_meas < 0)
         return nullptr; // No active measurement data set
