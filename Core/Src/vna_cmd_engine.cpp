@@ -588,9 +588,6 @@ static scpi_result_t scpi_vco_calc_data_q(scpi_t* context) {
     ULONG actual_flags;
     tx_event_flags_get(&measurement_event_flags, READOUT_EVENT_FLAG, TX_AND_CLEAR, &actual_flags, TX_WAIT_FOREVER);
 
-    // Send dummy text to the queue to finish the message with standard scpi response
-    SCPI_ResultText(context, "");
-
     return SCPI_RES_OK;
 }
 
