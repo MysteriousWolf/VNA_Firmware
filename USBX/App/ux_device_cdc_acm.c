@@ -64,14 +64,15 @@ uint8_t UserRxBuffer[64] = {};
   * @param  cdc_acm_instance: Pointer to the cdc acm class instance.
   * @retval none
   */
-VOID USBD_CDC_ACM_Activate(VOID* cdc_acm_instance) {
-    /* USER CODE BEGIN USBD_CDC_ACM_Activate */
+VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
+{
+  /* USER CODE BEGIN USBD_CDC_ACM_Activate */
     //UX_PARAMETER_NOT_USED(cdc_acm_instance);
     /* Save the instance */
     cdc_acm = (UX_SLAVE_CLASS_CDC_ACM*)cdc_acm_instance;
-    /* USER CODE END USBD_CDC_ACM_Activate */
+  /* USER CODE END USBD_CDC_ACM_Activate */
 
-    return;
+  return;
 }
 
 /**
@@ -80,12 +81,13 @@ VOID USBD_CDC_ACM_Activate(VOID* cdc_acm_instance) {
   * @param  cdc_acm_instance: Pointer to the cdc acm class instance.
   * @retval none
   */
-VOID USBD_CDC_ACM_Deactivate(VOID* cdc_acm_instance) {
-    /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
+VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
+{
+  /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
     UX_PARAMETER_NOT_USED(cdc_acm_instance);
-    /* USER CODE END USBD_CDC_ACM_Deactivate */
+  /* USER CODE END USBD_CDC_ACM_Deactivate */
 
-    return;
+  return;
 }
 
 /**
@@ -94,12 +96,13 @@ VOID USBD_CDC_ACM_Deactivate(VOID* cdc_acm_instance) {
   * @param  cdc_acm_instance: Pointer to the cdc acm class instance.
   * @retval none
   */
-VOID USBD_CDC_ACM_ParameterChange(VOID* cdc_acm_instance) {
-    /* USER CODE BEGIN USBD_CDC_ACM_ParameterChange */
+VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
+{
+  /* USER CODE BEGIN USBD_CDC_ACM_ParameterChange */
     UX_PARAMETER_NOT_USED(cdc_acm_instance);
-    /* USER CODE END USBD_CDC_ACM_ParameterChange */
+  /* USER CODE END USBD_CDC_ACM_ParameterChange */
 
-    return;
+  return;
 }
 
 /* USER CODE BEGIN 1 */
