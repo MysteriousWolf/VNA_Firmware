@@ -57,7 +57,9 @@ extern PCD_HandleTypeDef hpcd_USB_DRD_FS;
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
+void MX_GPIO_Init(void);
 void MX_USB_PCD_Init(void);
+void MX_SPI4_Init(void);
 
 /* USER CODE BEGIN EFP */
 void MX_USB_PCD_Init(void);
@@ -76,6 +78,12 @@ void MX_USB_PCD_Init(void);
 #define FPGA_CS_GPIO_Port GPIOE
 #define SPI4_NSS_Pin GPIO_PIN_11
 #define SPI4_NSS_GPIO_Port GPIOE
+#define SPI4_SCK_Pin GPIO_PIN_12
+#define SPI4_SCK_GPIO_Port GPIOE
+#define SPI4_MISO_Pin GPIO_PIN_13
+#define SPI4_MISO_GPIO_Port GPIOE
+#define SPI4_MOSI_Pin GPIO_PIN_14
+#define SPI4_MOSI_GPIO_Port GPIOE
 #define CONVERSION_DONE_Pin GPIO_PIN_15
 #define CONVERSION_DONE_GPIO_Port GPIOE
 #define CONVERSION_DONE_EXTI_IRQn EXTI15_IRQn

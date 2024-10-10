@@ -145,6 +145,10 @@ void vna_init() {
     set_led_state(2, LED_BUSY);
 
     // Initialize the FPGA
+    while (true) {
+        init_FPGA_DSP();
+        tx_thread_sleep(10);
+    }
     init_FPGA_DSP();
 
 #ifdef TEST_MODE
@@ -226,6 +230,14 @@ int32_t vna_measure_point(const uint64_t freq, meas_point_t* point) {
     /* Read the measurement */
     dsp_read_point(point);
     return 0;
+}
+
+void dsp_spi_init() {
+    MX_SPI4_Init();
+}
+
+void dsp_gpio_reinit() {
+    MX_GPIO_Init();
 }
 
 // External interrupt handler
