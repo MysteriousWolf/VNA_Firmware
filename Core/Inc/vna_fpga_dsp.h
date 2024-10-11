@@ -26,8 +26,8 @@
 #define DSP_CONVERSION_DONE_PIN     CONVERSION_DONE_Pin
 
 #define DSP_SPI_DATA_SIZE           4 // in chunks defined in the HAL SPI library (8 bits here)
-#define DSP_SPI_DELAY               10 // in us
-#define DSP_SPI_TIMEOUT             HAL_MAX_DELAY // in ms
+#define DSP_SPI_DELAY               0 // in us
+#define DSP_SPI_TIMEOUT             2 // in ms
 
 // FPGA specific status pins
 #define DSP_CDONE_PORT              FPGA_CRESET_GPIO_Port

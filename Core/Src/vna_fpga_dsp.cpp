@@ -118,6 +118,8 @@ void send_DSP(uint32_t addr, uint32_t data) {
 
 //uint32_t primask_bit;
 
+int counter = 0;
+
 uint32_t read_DSP(uint32_t addr) {
     // Ensure addr is within 4 bits
     addr &= DSP_ADDR_MASK; // Mask to 4 bits
@@ -125,9 +127,22 @@ uint32_t read_DSP(uint32_t addr) {
     // Construct the 32-bit read command: R/W bit (1 for read) + ADDR
     uint8_t tx_data[4] = {}; // 32 bits split into 4 bytes
     tx_data[0] = DSP_RW_MASK >> DSP_ADDR_SHIFT | addr;
-    tx_data[1] = 0xFA;
-    tx_data[2] = 0x9C;
-    tx_data[3] = 0x34;
+
+    if(counter % 3 == 0) {
+        tx_data[1] = 0xFA;
+        tx_data[2] = 0x9C;
+        tx_data[3] = 0x34;
+    } else if (counter % 3 == 1) {
+        tx_data[1] = 0x12;
+        tx_data[2] = 0x34;
+        tx_data[3] = 0x56;
+    } else {
+        tx_data[1] = 0x78;
+        tx_data[2] = 0x9A;
+        tx_data[3] = 0xBC;
+    }
+
+    counter++;
 
     uint32_t spi_received_data = 0; // Variable to store received data
 
@@ -163,7 +178,7 @@ uint32_t read_DSP(uint32_t addr) {
     HAL_GPIO_WritePin(DSP_CS_FPGA_PORT, DSP_CS_FPGA_PIN, GPIO_PIN_SET);
 
     // Tdi delay
-    delay_us(DSP_SPI_DELAY);
+    //delay_us(DSP_SPI_DELAY);
 
     // Convert back to uint32_t
     spi_received_data = (rx_data[0] << 24) | (rx_data[1] << 16) | (rx_data[2] << 8) | rx_data[3];
