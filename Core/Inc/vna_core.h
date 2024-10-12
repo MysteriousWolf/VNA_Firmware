@@ -27,8 +27,11 @@
 #define MAIN_QUEUE_STACK_SIZE  16
 
 // Event flags
-#define MEASUREMENT_EVENT_FLAG  0b01
-#define READOUT_EVENT_FLAG      0b10
+#define MEASUREMENT_EVENT_FLAG  (0b1 << 0)
+#define READOUT_EVENT_FLAG      (0b1 << 1)
+#define DSP_DMA_SPI_DONE        (0b1 << 2)
+#define ADC_DMA_SPI_DONE        (0b1 << 3)
+#define PLL_DMA_SPI_DONE        (0b1 << 4)
 
 // This needs to be visible from C code
 #ifdef __cplusplus

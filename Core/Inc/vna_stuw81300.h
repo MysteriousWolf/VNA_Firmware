@@ -23,6 +23,7 @@
 
 // SPI settings (use SPI (hspi2 on H5))
 #define PLL_SPI         hspi2
+#define PLL_SPI_INST    SPI2
 #define PLL_LE_PORT     SPI2_RST_GPIO_Port
 #define PLL_LE_PIN      SPI2_RST_Pin
 

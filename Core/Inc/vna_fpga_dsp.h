@@ -3,11 +3,15 @@
 
 #include "main.h"
 #include "types.h"
+
 #include "vna_meas_data.h"
+
 #include "vna_tx_utils.h"
+#include "vna_dma_utils.h"
 
 // SPI settings (use SPI (hspi4 on H5))
 #define DSP_SPI                     hspi4
+#define DSP_SPI_INST                SPI4
 //#define DSP_RST_PORT - whoops, DSP board revision 0.1 doesn't have a reset pin
 //#define DSP_RST_PIN - whoops, DSP board revision 0.1 doesn't have a reset pin
 

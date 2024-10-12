@@ -15,6 +15,7 @@
 
 // SPI settings (use SPI hspi3 on H5)
 #define ADC_SPI         hspi3
+#define ADC_SPI_INST    SPI3
 #define ADC_SEN_PORT    SPI3_CS_GPIO_Port
 #define ADC_SEN_PIN     SPI3_CS_Pin
 #define ADC_RST_PORT    SPI3_RST_GPIO_Port

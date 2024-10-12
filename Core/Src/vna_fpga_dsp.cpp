@@ -98,13 +98,11 @@ void send_DSP(uint32_t addr, uint32_t data) {
     // Tlc delay
     delay_us(DSP_SPI_DELAY);
 
-    // Send data via SPI
-    spi_state = HAL_SPI_Transmit(&DSP_SPI, tx_data, DSP_SPI_DATA_SIZE, DSP_SPI_TIMEOUT);
+    // Send data via SPI using DMA
+    spi_state = HAL_SPI_Transmit_DMA(&DSP_SPI, tx_data, DSP_SPI_DATA_SIZE);
 
-    if (spi_state != HAL_OK) {
-        // STM32 Breakpoint
-        delay_us(DSP_SPI_DELAY);
-    }
+    // Wait for the SPI transaction to finish by blocking this thread using a flag
+    vna_wait_for_flag(DSP_DMA_SPI_DONE);
 
     // Tcl delay
     delay_us(DSP_SPI_DELAY);
@@ -115,8 +113,6 @@ void send_DSP(uint32_t addr, uint32_t data) {
     // Tdi delay
     delay_us(DSP_SPI_DELAY);
 }
-
-//uint32_t primask_bit;
 
 int counter = 0;
 
@@ -155,30 +151,19 @@ uint32_t read_DSP(uint32_t addr) {
     uint8_t rx_data[4]; // Receiving 32 bits
 
     // Send the read command via SPI and receive the data
-    spi_state = HAL_SPI_TransmitReceive(&DSP_SPI, tx_data, rx_data, DSP_SPI_DATA_SIZE, DSP_SPI_TIMEOUT);
+    spi_state = HAL_SPI_TransmitReceive_DMA(&DSP_SPI, tx_data, rx_data, DSP_SPI_DATA_SIZE);
 
-    if (spi_state != HAL_OK) {
-        // STM32 Breakpoint
-        delay_us(DSP_SPI_DELAY);
-    }
-
-    spi_state = HAL_SPI_GetError(&DSP_SPI);
-    if (spi_state != HAL_SPI_ERROR_NONE) {
-        // Handle the specific error, log or break here for debugging
-        delay_us(DSP_SPI_DELAY);
-    }
+    // Wait for the SPI transaction to finish by blocking this thread using a flag
+    vna_wait_for_flag(DSP_DMA_SPI_DONE);
 
     // Tcl delay
     delay_us(DSP_SPI_DELAY);
-
-    // Enter threadx critical section
-
 
     // Set NCS pin high
     HAL_GPIO_WritePin(DSP_CS_FPGA_PORT, DSP_CS_FPGA_PIN, GPIO_PIN_SET);
 
     // Tdi delay
-    //delay_us(DSP_SPI_DELAY);
+    delay_us(DSP_SPI_DELAY);
 
     // Convert back to uint32_t
     spi_received_data = (rx_data[0] << 24) | (rx_data[1] << 16) | (rx_data[2] << 8) | rx_data[3];
