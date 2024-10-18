@@ -23,12 +23,15 @@ typedef enum vna_msg_type {
     VNA_MSG_NONE,
     VNA_MSG_TEXT,
     VNA_MSG_MEAS_DATA,
+    VNA_MSG_ADC_MEAS_DATA,
 } vna_msg_type;
 
 // Function prototypes
 void init_utils();
 
 void delay_us(int us);
+
+int32_t convert_to_signed_int(uint32_t value, int bitness);
 
 bool in_range64(uint64_t value, uint64_t min, uint64_t max);
 bool in_range(uint32_t value, uint32_t min, uint32_t max);
@@ -45,6 +48,7 @@ size_t send_text_to_queue(TX_QUEUE* char_queue, const char* data, size_t len);
 size_t receive_text_from_queue(TX_QUEUE* char_queue, char* buffer, size_t len);
 
 size_t send_meas_data_to_queue(TX_QUEUE* char_queue);
+size_t send_raw_adc_meas_to_queue(TX_QUEUE* char_queue);
 
 #ifdef __cplusplus
 }

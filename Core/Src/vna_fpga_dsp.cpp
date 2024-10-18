@@ -8,8 +8,41 @@
 constexpr uint32_t DSP_DEFAULT_COEFF_NUM = 12;
 int32_t DSP_DEFAULT_COEFFS[DSP_DEFAULT_COEFF_NUM] = {12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
 
+// Raw sample storage
+adc_point_t raw_samples[DSP_MEAS_POINT_CNT] = {};
+int32_t raw_sample_count = 0;
+
 uint32_t dsp_status = 0;
 uint32_t spi_state = 0;
+uint32_t reported_device_id = 0;
+
+uint32_t read_previous_data_sent() {
+    // Read the previous sent data
+    return read_DSP(DSP_REG_PREV_TRANSACTION);
+}
+
+void inf_circular_reg_read() {
+    // Read all registers defined in the header file in a while loop with small pauses
+    while (true) {
+        spi_state = read_DSP(DSP_REG_GEN_SETTINGS);
+        tx_thread_sleep(10);
+        spi_state = read_DSP(DSP_REG_GEN_STATUS);
+        tx_thread_sleep(10);
+        spi_state = read_DSP(DSP_REG_CONV_CONTROL);
+        tx_thread_sleep(10);
+        spi_state = read_DSP(DSP_REG_CONV_STATUS);
+        tx_thread_sleep(10);
+        spi_state = read_DSP(DSP_REG_READOUT);
+        tx_thread_sleep(10);
+        spi_state = read_DSP(DSP_REG_READOUT_STATUS);
+        tx_thread_sleep(10);
+        spi_state = read_DSP(DSP_REG_FIR_SHIFT);
+        tx_thread_sleep(10);
+        spi_state = read_DSP(DSP_REG_DEVICE_ID);
+        tx_thread_sleep(10);
+    }
+
+}
 
 void init_FPGA_DSP() {
     // Set all fpga pins as digital inputs to make them high impedance
@@ -62,26 +95,27 @@ void init_FPGA_DSP() {
     // Init SPI
     dsp_spi_init();
 
+    // Wait for the PLL to lock (read the status register)
+    while ((read_DSP(DSP_REG_GEN_STATUS) & 0x1) == 0)
+        tx_thread_sleep(10);
+
+    // Get the device ID
+    reported_device_id = read_DSP(DSP_REG_DEVICE_ID) & DSP_DEVICE_ID_MASK;
+
+    /* Configure the registry */
+    // Set point count to maximum
+    send_DSP(DSP_REG_CONV_CONTROL, DSP_MEAS_POINT_CNT & DSP_CONV_STAT_POINT_CNT_MASK);
+    //spi_state = read_DSP(DSP_REG_CONV_STATUS);
+
     // Set coefficients to default values
     // dsp_set_rbw_filter_coefficients(DSP_DEFAULT_COEFFS, DSP_DEFAULT_COEFF_NUM);
-
-    while (true) {
-        dsp_status = read_DSP(0b1111111);
-        tx_thread_sleep(20);
-        dsp_status = read_DSP(0b1100110);
-        tx_thread_sleep(20);
-        dsp_status = read_DSP(0b1010101);
-        tx_thread_sleep(20);
-        //send_DSP(0b1111111, 0);
-        //tx_thread_sleep(20);
-    }
 }
 
 void send_DSP(uint32_t addr, uint32_t data) {
     // TODO fix data width and address width to match the actual DSP
     // Ensure addr is within 4 bits and data is within 27 bits
-    addr &= DSP_ADDR_MASK; // Mask to 4 bits
-    data &= DSP_DATA_MASK; // Mask to 27 bits
+    addr &= DSP_ADDR_MASK; // Mask to 7 bits
+    data &= DSP_DATA_MASK; // Mask to 24 bits
 
     // Combine R/W (0 for write) + ADDR + DATA into a 32-bit variable
     const uint32_t spi_data = (addr << DSP_ADDR_SHIFT) | data; // R/W is 0, so we skip adding it
@@ -114,8 +148,6 @@ void send_DSP(uint32_t addr, uint32_t data) {
     delay_us(DSP_SPI_DELAY);
 }
 
-int counter = 0;
-
 uint32_t read_DSP(uint32_t addr) {
     // Ensure addr is within 4 bits
     addr &= DSP_ADDR_MASK; // Mask to 4 bits
@@ -123,22 +155,6 @@ uint32_t read_DSP(uint32_t addr) {
     // Construct the 32-bit read command: R/W bit (1 for read) + ADDR
     uint8_t tx_data[4] = {}; // 32 bits split into 4 bytes
     tx_data[0] = DSP_RW_MASK >> DSP_ADDR_SHIFT | addr;
-
-    if(counter % 3 == 0) {
-        tx_data[1] = 0xFA;
-        tx_data[2] = 0x9C;
-        tx_data[3] = 0x34;
-    } else if (counter % 3 == 1) {
-        tx_data[1] = 0x12;
-        tx_data[2] = 0x34;
-        tx_data[3] = 0x56;
-    } else {
-        tx_data[1] = 0x78;
-        tx_data[2] = 0x9A;
-        tx_data[3] = 0xBC;
-    }
-
-    counter++;
 
     uint32_t spi_received_data = 0; // Variable to store received data
 
@@ -171,6 +187,103 @@ uint32_t read_DSP(uint32_t addr) {
     // Return the received 27-bit data, masking out the upper 5 bits (R/W and ADDR bits)
     return (spi_received_data & DSP_DATA_MASK);
 }
+
+/**
+ * Start the DSP measurement
+ *
+ * @return 0 on success
+ */
+int32_t dsp_start_sample_measurement() {
+    // Start the DSP measurement
+    send_DSP(DSP_REG_CONV_CONTROL, DSP_CONV_CTRL_START_CONV);
+
+    // return 0 on success
+    return 0;
+}
+
+/**
+ * Check if the DSP has finished the measurement
+ *
+ * @param points_converted Pointer to the number of points converted so far
+ * @return True if the DSP has finished the measurement
+ */
+bool dsp_is_measurement_done_idx(uint32_t *points_converted) {
+    // Check if the DSP has finished the measurement
+    const uint32_t status = read_DSP(DSP_REG_CONV_STATUS);
+    *points_converted = status & DSP_CONV_STAT_POINT_CNT_MASK;
+
+    return (status & DSP_CONV_STAT_CONV_DONE) != 0;
+}
+
+/**
+ * Check if the DSP has finished the measurement
+ *
+ * @return True if the DSP has finished the measurement
+ */
+bool dsp_is_measurement_done() {
+    uint32_t points_converted = 0;
+
+    // Check if the DSP has finished the measurement
+    return dsp_is_measurement_done_idx(&points_converted);
+}
+
+/**
+ * Wait for the DSP to finish the measurement
+ */
+void dsp_wait_for_measurement_done() {
+    // Wait for the DSP to finish the measurement
+    while (!dsp_is_measurement_done())
+        tx_thread_sleep(10);
+}
+
+/**
+ * Read a sample point from the DSP
+ *
+ * @param point Pointer to the point to be filled
+ * @return 0 on success
+ */
+int32_t dsp_read_sample_point(adc_point_t *point) {
+    // Read the next point from the DSP
+    const uint32_t data = read_DSP(DSP_REG_READOUT);
+
+    // Extract the ADC values
+    point->adc_a = DSP_READOUT_MEAS_MASK & static_cast<int16_t>(data >> DSP_READOUT_MEAS_A_OFFSET);
+    point->adc_b = DSP_READOUT_MEAS_MASK & static_cast<int16_t>(data >> DSP_READOUT_MEAS_B_OFFSET);
+
+    // Return 0 on success
+    return 0;
+}
+
+/**
+ * Read all points from the DSP
+ *
+ * @return 1 if all points read, 0 if not all points read
+ */
+int32_t dsp_read_all_points() {
+    // Restart readout
+    send_DSP(DSP_REG_READOUT, DSP_READOUT_RESTART_READOUT);
+
+    // Read all points from the DSP until we run out of points or the DSP signals we read all points
+    for (raw_sample_count = 0; raw_sample_count < DSP_MEAS_POINT_CNT; raw_sample_count++) {
+        // Read the next point
+        dsp_read_sample_point(&raw_samples[raw_sample_count]);
+
+        // Check if the DSP has finished the measurement
+        const uint32_t ro_data = read_DSP(DSP_REG_READOUT_STATUS);
+
+        // Check if we are done reading according to the DSP
+        if ((DSP_READOUT_STAT_READOUT_DONE & ro_data) != 0)
+            return 1; // All available points read
+
+        // Check if the DSP index matches the number of points read
+        if ((DSP_READOUT_STAT_CURR_IDX_MASK & ro_data) == raw_sample_count)
+            return -1; // Not all points read
+    }
+
+    // All points read
+    return 0;
+}
+
 
 int32_t dsp_set_rbw_filter_coefficient(const int32_t coefficient, const uint32_t coef_index) {
     // Check if the index is within bounds

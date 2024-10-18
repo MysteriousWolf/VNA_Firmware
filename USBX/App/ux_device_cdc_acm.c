@@ -153,6 +153,26 @@ VOID usbx_cdc_acm_write_thread_entry(ULONG thread_input) {
             // Release the readout event flag
             tx_event_flags_set(&measurement_event_flags, READOUT_EVENT_FLAG, TX_OR);
             break;
+        case VNA_MSG_ADC_MEAS_DATA:
+            // Send the measurement data to the USB
+                for (size_t i = 0; i < raw_sample_count; i++) {
+                    // Convert the measurement point to a string
+                    const size_t point_len = raw_point_to_char_array(&raw_samples[i], message, QUEUE_STACK_SIZE);
+
+                    // Send the message to the USB
+                    ux_device_class_cdc_acm_write(cdc_acm, message, point_len, &tx_actual_length);
+
+                    // Add a comma separator if this is not the last point
+                    if (i < meas_data_outgoing.meta.num_points - 1) {
+                        ux_device_class_cdc_acm_write(cdc_acm, ",", 1, &tx_actual_length);
+                    }
+                }
+            // Send a newline character
+            ux_device_class_cdc_acm_write(cdc_acm, "\n", 1, &tx_actual_length);
+
+            // Release the readout event flag
+            tx_event_flags_set(&measurement_event_flags, ADC_READOUT_EVENT_FLAG, TX_OR);
+            break;
         default:
             break;
         }

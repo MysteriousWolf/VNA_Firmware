@@ -145,10 +145,6 @@ void vna_init() {
     set_led_state(2, LED_BUSY);
 
     // Initialize the FPGA
-    while (true) {
-        init_FPGA_DSP();
-        tx_thread_sleep(10);
-    }
     init_FPGA_DSP();
 
 #ifdef TEST_MODE
@@ -183,6 +179,17 @@ void vna_init() {
         case VNA_JOB_APPLY_CORRECTION:
             status = VNA_STATUS_APPLYING_CORRECTION;
             vna_refresh_meas_corrected();
+            break;
+        case VNA_JOB_READ_ADC:
+            status = VNA_STATUS_READING_ADC;
+            // Start a sample measurement
+            state = dsp_start_sample_measurement();
+
+            // Wait for the DSP to finish the measurement
+            dsp_wait_for_measurement_done();
+
+            // Read the measurement
+            state = dsp_read_all_points();
             break;
         default:
             status = VNA_STATUS_ERROR;

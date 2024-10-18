@@ -29,9 +29,10 @@
 // Event flags
 #define MEASUREMENT_EVENT_FLAG  (0b1 << 0)
 #define READOUT_EVENT_FLAG      (0b1 << 1)
-#define DSP_DMA_SPI_DONE        (0b1 << 2)
-#define ADC_DMA_SPI_DONE        (0b1 << 3)
-#define PLL_DMA_SPI_DONE        (0b1 << 4)
+#define ADC_READOUT_EVENT_FLAG  (0b1 << 2)
+#define DSP_DMA_SPI_DONE        (0b1 << 10)
+#define ADC_DMA_SPI_DONE        (0b1 << 11)
+#define PLL_DMA_SPI_DONE        (0b1 << 12)
 
 // This needs to be visible from C code
 #ifdef __cplusplus
@@ -43,6 +44,7 @@ typedef enum vna_job {
     VNA_JOB_CALIBRATE,
     VNA_JOB_MEASURE,
     VNA_JOB_APPLY_CORRECTION,
+    VNA_JOB_READ_ADC,
 } vna_job;
 
 // VNA core status
@@ -61,6 +63,7 @@ typedef enum vna_status {
     VNA_STATUS_CALIBRATING,
     VNA_STATUS_MEASURING,
     VNA_STATUS_APPLYING_CORRECTION,
+    VNA_STATUS_READING_ADC,
 } vna_status;
 
 extern TX_EVENT_FLAGS_GROUP measurement_event_flags;

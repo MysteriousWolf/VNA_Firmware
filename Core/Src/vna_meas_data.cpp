@@ -145,3 +145,32 @@ size_t meas_point_to_char_array(const meas_point_t *point, char *buffer, const s
     // Return success
     return actual_length;
 }
+
+size_t raw_point_to_char_array(const adc_point_t *point, char *buffer, const size_t buffer_size) {
+    // Check if the buffer is large enough
+    if (buffer_size < ADC_POINT_CHAR_LEN)
+        return 0;
+
+    size_t actual_length = 0;
+
+    // Buffer for the A channel
+    char amplitude_chars[ADC_CHAR_LEN + 1];
+
+    // Convert the A channel to a string and copy it to the buffer
+    actual_length += intToCharArray(convert_to_signed_int(point->adc_a, ADS4222_BITS), buffer, ADC_CHAR_LEN + 1, false);
+
+    // Add a separator
+    buffer[actual_length++] = ',';
+
+    // Terminate the string
+    buffer[actual_length] = '\0';
+
+    // Convert the B channel to a string
+    intToCharArray(convert_to_signed_int(point->adc_b, ADS4222_BITS), amplitude_chars, ADC_CHAR_LEN + 1, true);
+
+    // Concat the B channel to the buffer
+    actual_length = appendCharArray(buffer, buffer_size, amplitude_chars);
+
+    // Return success
+    return actual_length;
+}

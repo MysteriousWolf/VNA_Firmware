@@ -591,6 +591,31 @@ static scpi_result_t scpi_vco_calc_data_q(scpi_t* context) {
     return SCPI_RES_OK;
 }
 
+static scpi_result_t scpi_adc_meas_init(scpi_t* context) {
+    // Start the measurement collection
+    if (const int32_t status = vna_request_job(VNA_JOB_READ_ADC); status < 0) {
+        // Report the error code
+        SCPI_ResultInt32(context, status);
+        return SCPI_RES_ERR;
+    }
+
+    // If everything is OK, report the active measurement ID
+    SCPI_ResultUInt32(context, vna_get_active_meas());
+
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t scpi_adc_calc_conv_q(scpi_t* context) {
+    // Send the message to start the data transfer
+    send_raw_adc_meas_to_queue(&out_queue);
+
+    // Suspend reading until the data is fully sent
+    ULONG actual_flags;
+    tx_event_flags_get(&measurement_event_flags, ADC_READOUT_EVENT_FLAG, TX_AND_CLEAR, &actual_flags, TX_WAIT_FOREVER);
+
+    return SCPI_RES_OK;
+}
+
 // Core SCPI structs
 scpi_interface_t scpi_interface = {
     .error = SCPI_Error,
@@ -695,11 +720,14 @@ const scpi_command_t scpi_commands[] = {
 
     // Measurement and acquisition commands
     {.pattern = "INITiate:IMMediate", .callback = scpi_vco_meas_init,}, // This starts a single measurement
+    // This starts a single point conversion (combine with DEB:VCO:FREQ and DEB:VCO:MUT for a single point measurement)
+    {.pattern = "INITiate:CONVersion", .callback = scpi_adc_meas_init,},
 
     // To fetch the current measured data
     // RDATA/SDATA not supported, always returns FDATA returns polar amplitude and phase in degrees
     // Returns interchanging phase and amplitude separated by a comma
     {.pattern = "CALCulate:DATA?", .callback = scpi_vco_calc_data_q,},
+    {.pattern = "CALCulate:CONVersion?", .callback = scpi_adc_calc_conv_q,},
 
     SCPI_CMD_LIST_END
 };

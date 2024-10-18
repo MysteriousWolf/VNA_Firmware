@@ -7,6 +7,7 @@
 
 #include "main.h"
 #include "vna_stuw81300.h"
+#include "vna_ads4222.h"
 
 // Global measurement data constraints
 #define MEAS_TYPE               int16_t     // Type of measurement data (16 bits should be more than enough)
@@ -22,10 +23,20 @@
 #define MEAS_AMP_CHAR_LEN       5           // 16-bit integer max length
 #define MEAS_POINT_CHAR_LEN     (MEAS_PHASE_CHAR_LEN + MEAS_AMP_CHAR_LEN + 2) // values + separator + null terminator
 
+// Maximum length of a raw adc measurement point pair in characters
+#define ADC_CHAR_LEN            5           // 12-bit integer max length
+#define ADC_POINT_CHAR_LEN     (ADC_CHAR_LEN + ADC_CHAR_LEN + 2) // values + separator + null terminator
+
 // This needs to be visible from C code
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// RAW ADC measurement point
+typedef struct {
+    MEAS_TYPE adc_a;
+    MEAS_TYPE adc_b;
+} adc_point_t;
 
 // Measurement point
 typedef struct {
@@ -65,6 +76,7 @@ int32_t vna_measure_point(uint64_t freq, meas_point_t *point);
 
 // Data formatting functions
 size_t meas_point_to_char_array(const meas_point_t *point, char *buffer, size_t buffer_size);
+size_t raw_point_to_char_array(const adc_point_t *point, char *buffer, size_t buffer_size);
 
 #ifdef __cplusplus
 }

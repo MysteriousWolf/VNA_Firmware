@@ -22,6 +22,17 @@ void delay_us(const int us) {
 }
 
 /**
+ * Convert a custom-bit signed value stored in a 32-bit unsigned container to a signed 32-bit integer
+ * @param value The 32-bit unsigned integer containing the value
+ * @param bitness The bit size of the actual data (e.g., 12 for 12-bit ADC values)
+ * @return The converted 32-bit signed integer
+ */
+int32_t convert_to_signed_int(const uint32_t value, const int bitness) {
+    // Mask the value to only keep the relevant bits and sign-extend the rest
+    return static_cast<int32_t>(value << (32 - bitness)) >> (32 - bitness);
+}
+
+/**
  * In range check 64-bit
  * @param value The value to check
  * @param min The minimum value
@@ -294,6 +305,26 @@ size_t receive_text_from_queue(TX_QUEUE* char_queue, char* buffer, const size_t 
 size_t send_meas_data_to_queue(TX_QUEUE* char_queue) {
     // Send the message type first
     ULONG msg_type = VNA_MSG_MEAS_DATA;
+    UINT status = tx_queue_send(char_queue, &msg_type, TX_WAIT_FOREVER);
+    if (status != TX_SUCCESS) {
+        // Handle error
+        return 0;
+    }
+
+    // Send the length of the data second (0 as a placeholder)
+    ULONG length = 0;
+    status = tx_queue_send(char_queue, &length, TX_WAIT_FOREVER);
+    if (status != TX_SUCCESS) {
+        // Handle error
+        return 0;
+    }
+
+    return sizeof(char*); // pointer message hack length
+}
+
+size_t send_raw_adc_meas_to_queue(TX_QUEUE* char_queue) {
+    // Send the message type first
+    ULONG msg_type = VNA_MSG_ADC_MEAS_DATA;
     UINT status = tx_queue_send(char_queue, &msg_type, TX_WAIT_FOREVER);
     if (status != TX_SUCCESS) {
         // Handle error

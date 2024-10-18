@@ -13,6 +13,11 @@
 // Product page: https://www.ti.com/product/ADS4222
 // Datasheet: https://www.ti.com/lit/ds/symlink/ads4222.pdf
 
+// General properties
+#define ADS4222_NAME    "ADS4222"  // Device name
+#define ADS4222_FREQ    65000000    // ADC sample rate (65 MSPS)
+#define ADS4222_BITS    12          // ADC resolution (12 bits)
+
 // SPI settings (use SPI hspi3 on H5)
 #define ADC_SPI         hspi3
 #define ADC_SPI_INST    SPI3
