@@ -41,7 +41,6 @@ void inf_circular_reg_read() {
         spi_state = read_DSP(DSP_REG_DEVICE_ID);
         tx_thread_sleep(10);
     }
-
 }
 
 void init_FPGA_DSP() {
@@ -194,7 +193,7 @@ uint32_t read_DSP(uint32_t addr) {
  * @return 0 on success
  */
 int32_t dsp_start_sample_measurement() {
-    // Start the DSP measurement
+    // Start the DSP measurement (no point count means max points)
     send_DSP(DSP_REG_CONV_CONTROL, DSP_CONV_CTRL_START_CONV);
 
     // return 0 on success
@@ -207,7 +206,7 @@ int32_t dsp_start_sample_measurement() {
  * @param points_converted Pointer to the number of points converted so far
  * @return True if the DSP has finished the measurement
  */
-bool dsp_is_measurement_done_idx(uint32_t *points_converted) {
+bool dsp_is_measurement_done_idx(uint32_t* points_converted) {
     // Check if the DSP has finished the measurement
     const uint32_t status = read_DSP(DSP_REG_CONV_STATUS);
     *points_converted = status & DSP_CONV_STAT_POINT_CNT_MASK;
@@ -242,7 +241,7 @@ void dsp_wait_for_measurement_done() {
  * @param point Pointer to the point to be filled
  * @return 0 on success
  */
-int32_t dsp_read_sample_point(adc_point_t *point) {
+int32_t dsp_read_sample_point(adc_point_t* point) {
     // Read the next point from the DSP
     const uint32_t data = read_DSP(DSP_REG_READOUT);
 
