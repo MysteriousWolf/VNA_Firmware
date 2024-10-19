@@ -163,7 +163,7 @@ VOID usbx_cdc_acm_write_thread_entry(ULONG thread_input) {
                     ux_device_class_cdc_acm_write(cdc_acm, message, point_len, &tx_actual_length);
 
                     // Add a comma separator if this is not the last point
-                    if (i < meas_data_outgoing.meta.num_points - 1) {
+                    if (i < raw_sample_count - 1) {
                         ux_device_class_cdc_acm_write(cdc_acm, ",", 1, &tx_actual_length);
                     }
                 }
