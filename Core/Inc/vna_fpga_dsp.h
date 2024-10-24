@@ -29,6 +29,7 @@
 #define DSP_MOSI_PORT               SPI4_MOSI_GPIO_Port
 #define DSP_MOSI_PIN                SPI4_MOSI_Pin
 
+// Doubles as a "busy" pin when the DSP is converting or reading data
 #define DSP_CONVERSION_DONE_PORT    CONVERSION_DONE_GPIO_Port
 #define DSP_CONVERSION_DONE_PIN     CONVERSION_DONE_Pin
 
@@ -158,8 +159,6 @@ int32_t dsp_start_measurement(uint64_t freq);
 int32_t dsp_read_point(meas_point_t *point);
 
 int32_t dsp_start_sample_measurement();
-bool dsp_is_measurement_done_idx(uint32_t *points_converted);
-bool dsp_is_measurement_done();
 void dsp_wait_for_measurement_done();
 int32_t dsp_read_sample_point(adc_point_t *point);
 int32_t dsp_read_all_points();
@@ -167,6 +166,8 @@ int32_t dsp_read_all_points();
 void dsp_spi_init(void);
 void dsp_fpga_reinit(void);
 void dsp_gpio_reinit();
+
+bool dsp_is_busy();
 
 #ifdef __cplusplus
 }

@@ -95,19 +95,7 @@ void init_FPGA_DSP() {
     dsp_spi_init();
 
     // Wait for the PLL to lock (read the status register)
-    while ((read_DSP(DSP_REG_GEN_STATUS) & 0x1) == 0)
-        tx_thread_sleep(10);
-
-    // Get the device ID
-    reported_device_id = read_DSP(DSP_REG_DEVICE_ID) & DSP_DEVICE_ID_MASK;
-
-    /* Configure the registry */
-    // Set point count to maximum
-    send_DSP(DSP_REG_CONV_CONTROL, DSP_MEAS_POINT_CNT & DSP_CONV_STAT_POINT_CNT_MASK);
-    //spi_state = read_DSP(DSP_REG_CONV_STATUS);
-
-    // Set coefficients to default values
-    // dsp_set_rbw_filter_coefficients(DSP_DEFAULT_COEFFS, DSP_DEFAULT_COEFF_NUM);
+    tx_thread_sleep(50);
 }
 
 void send_DSP(uint32_t addr, uint32_t data) {
@@ -201,38 +189,22 @@ int32_t dsp_start_sample_measurement() {
 }
 
 /**
- * Check if the DSP has finished the measurement
- *
- * @param points_converted Pointer to the number of points converted so far
- * @return True if the DSP has finished the measurement
- */
-bool dsp_is_measurement_done_idx(uint32_t* points_converted) {
-    // Check if the DSP has finished the measurement
-    const uint32_t status = read_DSP(DSP_REG_CONV_STATUS);
-    *points_converted = status & DSP_CONV_STAT_POINT_CNT_MASK;
-
-    return (status & DSP_CONV_STAT_CONV_DONE) != 0;
-}
-
-/**
- * Check if the DSP has finished the measurement
- *
- * @return True if the DSP has finished the measurement
- */
-bool dsp_is_measurement_done() {
-    uint32_t points_converted = 0;
-
-    // Check if the DSP has finished the measurement
-    return dsp_is_measurement_done_idx(&points_converted);
-}
-
-/**
  * Wait for the DSP to finish the measurement
  */
 void dsp_wait_for_measurement_done() {
     // Wait for the DSP to finish the measurement
-    while (!dsp_is_measurement_done())
+    while (dsp_is_busy())
         tx_thread_sleep(10);
+}
+
+int16_t reverse_bits_12(int16_t value) {
+    int16_t result = 0;
+    for (int i = 0; i < 12; ++i) {
+        result <<= 1;
+        result |= (value & 1);
+        value >>= 1;
+    }
+    return result;
 }
 
 /**
@@ -259,24 +231,17 @@ int32_t dsp_read_sample_point(adc_point_t* point) {
  * @return 1 if all points read, 0 if not all points read
  */
 int32_t dsp_read_all_points() {
-    // Restart readout
-    send_DSP(DSP_REG_READOUT, DSP_READOUT_RESTART_READOUT);
-
     // Read all points from the DSP until we run out of points or the DSP signals we read all points
     for (raw_sample_count = 0; raw_sample_count < DSP_MEAS_POINT_CNT; raw_sample_count++) {
         // Read the next point
         dsp_read_sample_point(&raw_samples[raw_sample_count]);
 
         // Check if the DSP has finished the measurement
-        const uint32_t ro_data = read_DSP(DSP_REG_READOUT_STATUS);
+        //const uint32_t ro_data = read_DSP(DSP_REG_READOUT_STATUS);
 
         // Check if we are done reading according to the DSP
-        if ((DSP_READOUT_STAT_READOUT_DONE & ro_data) != 0)
+        if (!dsp_is_busy())
             return 1; // All available points read
-
-        // Check if the DSP index matches the number of points read
-        if ((DSP_READOUT_STAT_CURR_IDX_MASK & ro_data) == raw_sample_count)
-            return -1; // Not all points read
     }
 
     // All points read
@@ -337,4 +302,9 @@ int32_t dsp_read_point(meas_point_t* point) {
     // TODO implement the actual DSP point reading
 
     return 0;
+}
+
+bool dsp_is_busy() {
+    // Check if the DSP is busy
+    return HAL_GPIO_ReadPin(DSP_CONVERSION_DONE_PORT, DSP_CONVERSION_DONE_PIN) == GPIO_PIN_SET;
 }
