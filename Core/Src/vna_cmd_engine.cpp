@@ -471,7 +471,7 @@ static scpi_result_t scpi_vco_meas_freq_start(scpi_t* context) {
 
 static scpi_result_t scpi_vco_meas_freq_start_q(scpi_t* context) {
     // Report the start frequency
-    SCPI_ResultUInt64(context, vna_get_calib_start_frequency());
+    SCPI_ResultUInt64(context, vna_get_meas_start_frequency());
 
     return SCPI_RES_OK;
 }
@@ -516,7 +516,7 @@ static scpi_result_t scpi_vco_meas_freq_stop(scpi_t* context) {
 
 static scpi_result_t scpi_vco_meas_freq_stop_q(scpi_t* context) {
     // Report the stop frequency
-    SCPI_ResultUInt64(context, vna_get_calib_stop_frequency());
+    SCPI_ResultUInt64(context, vna_get_meas_stop_frequency());
 
     return SCPI_RES_OK;
 }
