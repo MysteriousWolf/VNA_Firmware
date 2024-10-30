@@ -240,8 +240,10 @@ int32_t dsp_read_all_points() {
         //const uint32_t ro_data = read_DSP(DSP_REG_READOUT_STATUS);
 
         // Check if we are done reading according to the DSP
-        if (!dsp_is_busy())
+        if (!dsp_is_busy()) {
+            raw_sample_count++;
             return 1; // All available points read
+        }
     }
 
     // All points read
