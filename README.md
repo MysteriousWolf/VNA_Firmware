@@ -8,6 +8,6 @@ ___
 
 ## The open-source 8-16 GHz VNA project  
 This firmware is part of the open-source 8-16 GHz VNA project (my master's thesis). You can find all associated resources in the following repositories:
-- Hardware repository - TBD
+- [Hardware repository](https://github.com/MysteriousWolf/VNA_Hardware)
 - [Firmware repository](https://github.com/MysteriousWolf/VNA_Firmware) (this one)
 - [FPGA Config repository](https://github.com/MysteriousWolf/VNA_FPGA_DSP)
